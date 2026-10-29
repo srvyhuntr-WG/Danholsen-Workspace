@@ -45,3 +45,25 @@ body:has(.etb.show) .wrap.ew{padding-bottom:340px}
  .shw{width:auto!important;height:auto!important;margin:0}
  .shw .sheet{position:static!important;transform:none!important}
 }
+
+/* v37: flat plate logo */
+.brand.bp{display:flex!important;align-items:center;gap:12px!important;background:#fff;border:1px solid rgba(22,19,14,.14);border-radius:8px;padding:6px 12px;cursor:pointer;transition:border-color .2s,transform .15s}
+.brand.bp:hover{border-color:rgba(242,169,0,.85)}.brand.bp:active{transform:scale(.98)}
+.brand.bp .bpi{height:30px;width:auto;display:block}
+.brand.bp .bpv{width:1px;height:22px;background:rgba(22,19,14,.18);flex:none}
+.brand.bp .bpw{font:600 12px/1 var(--font);letter-spacing:.02em;color:#16130E}
+@media(max-width:600px){.brand.bp{padding:5px 9px;gap:9px!important}.brand.bp .bpi{height:24px}.brand.bp .bpv{height:18px}.brand.bp .bpw{font-size:11px}}
+@media(max-width:380px){.brand.bp .bpv,.brand.bp .bpw{display:none}}
+
+/* v38: edit bar stays put when the page is pinch-zoomed */
+.etb{transform-origin:50% 100%;transform:translate(var(--vx,0px),calc(var(--vy,0px) + 115%)) scale(var(--vs,1))}
+.etb.show{transform:translate(var(--vx,0px),var(--vy,0px)) scale(var(--vs,1))}
+.etb.vz{transition:none}
+
+/* v40: bottom menu docked to the very bottom edge on phones and tablets */
+@media(max-width:899px){
+ .nav{left:0!important;right:0!important;bottom:0!important;max-width:none!important;width:100%;margin:0!important;border-radius:0!important;border:0!important;border-top:1px solid var(--ln)!important;
+  padding:6px 10px calc(6px + env(safe-area-inset-bottom))!important;background:var(--sf)!important;backdrop-filter:none!important;box-shadow:0 -6px 20px -14px rgba(0,0,0,.25)!important;justify-content:space-around}
+ .nav button{border-radius:16px!important}
+ .wrap:not(.ew){padding-bottom:calc(96px + env(safe-area-inset-bottom))!important}
+}

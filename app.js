@@ -3,7 +3,7 @@
 const $=s=>document.querySelector(s),LS=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},SV=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{toast('Storage full - remove unused logos or documents')}};
 const fkey=d=>((d.pf||(d.d&&d.d.proj))||'').trim()||'Unfiled';
 let docs=LS('dw.docs',[]),theme=LS('dw.theme','auto'),ME=LS('dw.me',{}),lgs=0,lv='',view='home',cur=null,pane='form',fld=null,ret='home',pvB=null,projs=LS('dw.proj',[]),ct=LS('dw.ct',{});
-const eff=()=>theme==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):theme,TC=()=>eff()==='dark'?'#000000':'#FAF8F3';
+const eff=()=>theme==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):theme,TC=()=>eff()==='dark'?'#000000':'#FFFFFF';
 const RELAY_URL='https://script.google.com/macros/s/AKfycbzpA-xXhKiRGUWXdWjo86tUsDbJqf3whW7h4z5JRILA6CKg8N-Qbd0PzBqVIl2HXldd/exec',RELAY_KEY='dw-8581750528ec08a1';
 let AU=Object.assign({on:false,remind:true},LS('dw.auto',{}));
 const bkJSON=()=>JSON.stringify({app:'danholsen-workspace',v:2,at:new Date().toISOString(),docs,lib,sigs,msgs}),bkName=()=>`danholsen-backup-${new Date().toISOString().slice(0,10)}.json`,DAY=864e5,lastBk=()=>LS('dw.lastbk',0)||0;
@@ -228,7 +228,14 @@ function mountEditor(){const doc=cur,g=$('#stage'),b=$('#etb');act=null;zm=1;his
   else if(k==='delf'){pushH();const fk=id[0]==='f'?id.slice(2):id.slice(4),cf=doc.cf||[],i=cf.findIndex(c=>c.k===fk);if(i>=0){cf.splice(i,1);delete doc.d[fk];if(doc.o)delete doc.o['L:'+fk]}else(doc.hide=doc.hide||[]).push(fk);act=null;paint();setBar()}};
  $('#ttl').oninput=ev=>{doc.title=ev.target.value;const h=g.querySelector('[data-ed="t"]');if(h&&!h.classList.contains('on'))h.textContent=ev.target.value;doc.u=Date.now();queue()}}
 addEventListener('resize',()=>{if(view==='ed')fit();if(view==='home')fitThumbs()});
-if(window.visualViewport){const f=()=>{const b=$('#etb');if(b)b.style.bottom=Math.max(0,innerHeight-visualViewport.height-visualViewport.offsetTop)+'px'};visualViewport.addEventListener('resize',f);visualViewport.addEventListener('scroll',f)}
+if(window.visualViewport){const vv=visualViewport;let q=0;
+ /* keep the edit bar at its normal on-screen size and glued to the visible bottom, even while pinch-zoomed or with the keyboard open */
+ const f=()=>{q=0;const b=$('#etb');if(!b)return;const s=vv.scale||1,de=document.documentElement,lw=de.clientWidth,lh=de.clientHeight;
+  b.classList.toggle('vz',Math.abs(s-1)>.01);b.style.maxWidth='none';b.style.width=Math.min(560,vv.width)*s+'px';
+  b.style.setProperty('--vs',String(1/s));b.style.setProperty('--vx',(vv.offsetLeft+vv.width/2-lw/2)+'px');b.style.setProperty('--vy',(vv.offsetTop+vv.height-lh)+'px')};
+ const sch=()=>{if(!q)q=requestAnimationFrame(f)};
+ vv.addEventListener('resize',sch);vv.addEventListener('scroll',sch);addEventListener('scroll',sch,{passive:true});
+ new MutationObserver(sch).observe(document.body,{childList:true,subtree:true})}
 
 /* ---------- header logos: per-document editor + shared logo library ---------- */
 function addLogoFile(f,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,500/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);const id=uid();lib.push({id,src:c.toDataURL('image/png')});SV('dw.lib',lib);cb(id)};im.onerror=()=>toast('Could not read that image');im.src=r.result};r.readAsDataURL(f)}
@@ -295,7 +302,7 @@ const greet=()=>{const h=new Date().getHours(),g=h<12?'Good morning':h<17?'Good 
 const bar=(l,r='')=>`<header class="top">${l}<div class="sp"></div>${r}${view==='ed'||view==='pv'||view==='cfg'?'':`<button class="ib av" id="cfg" aria-label="Settings">${ini()}</button>`}</header>`;
 IC.fd='<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 const BRAND=window.DG_UI||'danholsen-full.png';
-const brand=`<div class="brand" id="home"><span class="bl"><img src="${BRAND}" width="${Math.round(34*1600/364)}" height="34" decoding="sync" alt="Danholsen Global Services"></span><span class="wm">Workspace</span></div>`;
+const brand=`<div class="brand bp" id="home"><img class="bpi" src="${BRAND}" width="${Math.round(30*1600/364)}" height="30" decoding="sync" alt="Danholsen Global Services"><span class="bpv"></span><span class="bpw">Workspace</span></div>`;
 const nav=v=>`<nav class="nav"><button id="home" class="${v==='home'?'on':''}">${IC.home}<span>Home</span></button><button id="files" class="${v==='files'?'on':''}">${IC.files}<span>Files</span></button><button id="set" class="${v==='set'?'on':''}">${IC.set}<span>Library</span></button><button id="cfg" class="${v==='cfg'?'on':''}">${IC.cfg}<span>Settings</span></button></nav>`;
 function applyTheme(){const h=document.documentElement;h.classList.add('nt');h.dataset.t=eff();const mt=document.querySelector('meta[name=theme-color]');if(mt)mt.content=TC();requestAnimationFrame(()=>requestAnimationFrame(()=>h.classList.remove('nt')))}
 function render(){document.documentElement.dataset.t=eff();document.querySelectorAll('#lgp,#sgp').forEach(q=>q.remove());{const mt=document.querySelector('meta[name=theme-color]');if(mt)mt.content=TC()}const A=$('#app'),L=[...docs].sort((a,b)=>b.u-a.u),last=L[0];
@@ -373,7 +380,7 @@ document.addEventListener('click',ev=>{if(view!=='set')return;
 render();
 
 /* ---------- auto-updating PWA: checks for a new version and refreshes itself ---------- */
-const BUILD='36';let upd=false,swr=null;
+const BUILD='40';let upd=false,swr=null;
 const busy=()=>view==='ed'||view==='pv';
 function applyUpd(){if(!upd)return;if(busy()){if(!applyUpd.n){applyUpd.n=1;toast('A new version is ready',()=>location.reload(),'Refresh now')}return}
  try{const k='dw.rl';if(sessionStorage.getItem(k)===BUILD+'>'+upd){return}sessionStorage.setItem(k,BUILD+'>'+upd)}catch{}

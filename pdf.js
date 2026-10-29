@@ -88,7 +88,7 @@ async function build(doc,ctx){
   try{pdf.addImage(g.d,'PNG',xx,yy,ww,hh,undefined,'FAST')}catch(err){console.warn('signature skipped',err)}};
  const seqLogos=(x,y,maxW,h,gap=12)=>{const L=logoList();if(!L.length)return;
   const S=L.map(o=>{const hh=h*o.s;return{o,ww:o.im.w*hh/o.im.h,hh}}),tot=S.reduce((a,b)=>a+b.ww,0)+gap*(S.length-1),k=Math.min(1,maxW/tot);
-  let cx=x;S.forEach(s=>{const ww=s.ww*k,hh=s.hh*k;img(s.o,cx,y+(h-hh)/2,ww,hh);cx+=ww+gap*k})};
+  let cx=x;S.forEach(s=>{const ww=s.ww*k,hh=s.hh*k;img(s.o,cx,y+(h-hh)/2,ww,hh);cx+=ww+gap*k});return cx-gap*k};
  const cellLogos=(L,x,y,w,h,N)=>{N=N||L.length;if(!N)return;const cw=w/N;for(let i=1;i<N;i++)line(x+i*cw,y,x+i*cw,y+h,LW);
   L.forEach((o,i)=>{
    const r=Math.min((cw-10)*o.s/o.im.w,(h-8)*o.s/o.im.h),ww=o.im.w*r,hh=o.im.h*r;img(o,x+i*cw+(cw-ww)/2,y+(h-hh)/2,ww,hh)})};
@@ -110,14 +110,23 @@ async function build(doc,ctx){
  /* ================= headers ================= */
  const header=()=>{
   if(doc.t==='jcf'){seqLogos(36,36,300,32);line(36,89.5,576,89.5,LWT.rule);
-   {const a=al('h:t','left');text((doc.title||T.n).toUpperCase(),a==='center'?306:a==='right'?576:36,115,vs('h:t',16),vb('h:t',true),a)}
-   text('JCF NO: '+(V('no')||''),576,114,vs('no',10),vb('no',true),'right');y=136}
+   {const a=al('h:t','left'),tt=(doc.title||T.n).toUpperCase(),b=vb('h:t',true),noT='JCF NO: '+(V('no')||''),nz=vs('no',10),nb=vb('no',true);
+    font(nz,nb);const nw=pdf.getTextWidth(clean(noT)),fitZ=wid=>{let z=vs('h:t',16);const tw=()=>{font(z,b);return pdf.getTextWidth(clean(tt))};while(z>10&&tw()>wid)z-=.5;return{z,ok:tw()<=wid}};
+    /* the title shares a line with the form number only when both fit; otherwise the number drops below it */
+    let r=fitZ(540-nw-18),ty=115,ny=114;
+    if(!r.ok){r=fitZ(540);ny=ty+15}
+    const xr=ny===114?576-nw-18:576;
+    text(tt,a==='center'?(36+xr)/2:a==='right'?xr:36,ty,r.z,b,a);text(noT,576,ny,nz,nb,'right');y=ny===114?136:152}}
   else if(doc.t==='trn'){const h=55;box(L0,36,270,h,{lw:LW});box(306.5,36,270,h,{lw:LW,fill:K.amber});
    seqLogos(44,42,254,43);put((doc.title||T.n).toUpperCase(),306.5,36,270,h,{sz:vs('h:t',15),b:vb('h:t',true),al:al('h:t','center'),fg:K.white});y=36+h}
-  else if(doc.t==='tsh'){seqLogos(36,36,260,34);
-   {const a=al('h:t','right');text((doc.title||T.n).toUpperCase(),a==='left'?L0:a==='center'?(L0+R0)/2:R0,56,vs('h:t',17),vb('h:t',true),a)}
-   text(['Week '+V('wk'),V('from')&&V('to')?(V('from')+' to '+V('to')):''].filter(Boolean).join('   |   '),R0,71,8.5,false,'right',[90,90,90]);
-   line(L0,84,R0,84,LWT.rule,K.amber);y=98}
+  else if(doc.t==='tsh'){const ex=seqLogos(36,36,260,34),tt=(doc.title||T.n).toUpperCase(),a=al('h:t','right'),b=vb('h:t',true),z0=vs('h:t',17);
+   /* title sits beside the logo when it fits; otherwise it drops to its own line so it can never run into the logo */
+   const fitZ=(wid)=>{let z=z0;const tw=()=>{font(z,b);return pdf.getTextWidth(clean(tt))};while(z>11&&tw()>wid)z-=.5;return{z,ok:tw()<=wid}};
+   let lx=ex?ex+18:L0,r=fitZ(R0-lx),ty=56,sy=71,ly=84;
+   if(!r.ok){lx=L0;r=fitZ(W);ty=ex?90:56;sy=ty+15;ly=sy+13}
+   {text(tt,a==='left'?lx:a==='center'?(lx+R0)/2:R0,ty,r.z,b,a)}
+   text(['Week '+V('wk'),V('from')&&V('to')?(V('from')+' to '+V('to')):''].filter(Boolean).join('   |   '),R0,sy,8.5,false,'right',[90,90,90]);
+   line(L0,ly,R0,ly,LWT.rule,K.amber);y=ly+14}
   else{ /* report header: [logos] | title | [logos] - sized to however many logos THIS document carries.
            1 logo = [logo | title]; 2 = [logo | title | logo]; 3+ = logos split across both sides of the title. */
    const y0=31.3,h1=41,h2=Math.max(18,vs('h:L:date',10)*1.8,vs('h:L:no',9.5)*1.8),Ls=logoList(),n=Ls.length,nl=Math.ceil(n/2),nr=n-nl;

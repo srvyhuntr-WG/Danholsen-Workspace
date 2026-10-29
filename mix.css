@@ -1,6 +1,6 @@
 /* ===== v28 "Field Mix": rounded, roomy controls + warm paper and amber. Loads before mobile.css. ===== */
-:root{--bg:#FAF8F3;--sf:#fff;--sf2:#F3EFE6;--tx:#16130E;--mu:#5E574B;--ln:#E2DBCC;--ac:#F2A900;--bl:#16130E;--desk:#E7E2D5;--rc:20px;--rb:16px;
---sh:0 1px 2px rgba(22,19,14,.05),0 14px 30px -16px rgba(22,19,14,.22)}
+:root{--bg:#FFFFFF;--sf:#fff;--sf2:#F4F5F7;--tx:#111317;--mu:#5C616B;--ln:#E3E6EB;--ac:#F2A900;--bl:#111317;--desk:#ECEEF1;--rc:20px;--rb:16px;
+--sh:0 1px 2px rgba(17,19,23,.05),0 14px 30px -16px rgba(17,19,23,.18)}
 [data-t=dark]{--bg:#000;--sf:#111113;--sf2:#1A1A1D;--tx:#F5F5F6;--mu:#9A9AA2;--ln:#26262A;--ac:#FFB81C;--bl:#FFB81C;--desk:#000;
 --sh:0 1px 0 #ffffff0a inset,0 18px 36px -18px #000}
 html,body{background:var(--bg)}
