@@ -974,3 +974,7 @@ body:has(#pe) .wrap{padding-bottom:40px}
 .pe-tb{flex-wrap:wrap;overflow:visible}
 .pe-tb i{flex-basis:100%;height:0;order:0}
 .pe-t.w,.pe-t.p{flex:1}
+
+/* v60: light mode - app background slightly dimmer than the white cards and panels */
+:root[data-t=light]{--bg:#EDEFF2}
+:root[data-t=light] .nav{background:color-mix(in srgb,var(--sf) 94%,transparent)}

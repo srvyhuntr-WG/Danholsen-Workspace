@@ -3,7 +3,7 @@
 // Nothing in this file needs a version number. The app fingerprints its own files and refreshes
 // itself when they change (see app.js), and the cache below is rebuilt from index.html on install.
 const C='dw-app';
-const EXTRA=['./','index.html','manifest.webmanifest','pdf.min.mjs','pdf.worker.min.mjs','danholsen-full.png'];
+const EXTRA=['./','index.html','manifest.webmanifest','pdf.min.mjs','pdf.worker.min.mjs','danholsen-full.png','app.js','pdfedit.js'];
 async function precache(){
   const c=await caches.open(C);
   const grab=u=>c.add(new Request(u,{cache:'reload'})).catch(()=>{});
