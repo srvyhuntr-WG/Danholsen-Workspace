@@ -1,0 +1,47 @@
+/* ===== v27: phone pass. Loads last. ===== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+
+/* the top bar already adds the safe-area gap; body no longer adds it a second time */
+body{padding-top:0}
+
+/* ---- editor sheet: true A4 layout, scaled with transform (matches the PDF exactly) ---- */
+.wrap.ew{padding:8px 8px 170px}
+body:has(.etb.show) .wrap.ew{padding-bottom:340px}
+.stage{padding:6px 12px 10px;overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch}
+.shw{position:relative;flex:none;margin:0 auto}
+.shw .sheet{position:absolute;left:0;top:0;margin:0!important;zoom:1!important;transform-origin:0 0}
+/* red row-delete handle keeps a finger-sized target whatever the scale is */
+#stage tr[data-rr]::after{width:calc(24px/var(--k,1));height:calc(24px/var(--k,1));margin-left:calc(3px/var(--k,1));font:700 calc(18px/var(--k,1))/calc(23px/var(--k,1)) Arial,sans-serif}
+/* table headings never run into the next column */
+.sheet .tb th,.sheet .rl{overflow-wrap:anywhere;word-break:normal;hyphens:manual}
+
+/* ---- phones ---- */
+@media(max-width:600px){
+ .wrap{padding:22px 16px 130px}
+ .rail{margin:0 -16px;padding:4px 16px 18px;scroll-padding:0 16px}
+ .cont{padding:16px 16px 16px 18px;gap:16px}
+ .ctx{flex-wrap:wrap;row-gap:6px}.tp{flex:1 1 100%}
+ .h1{font-size:34px}
+}
+.ci{min-width:0}.ci h2{overflow-wrap:anywhere}
+
+/* iOS zooms the whole page when a field under 16px gets focus */
+@media(max-width:900px){input,textarea,select,.search,.sfl input,.sfl textarea{font-size:16px}}
+
+/* touch screens have no hover: stop highlights sticking after a tap */
+@media(hover:none){
+ .tile:hover{transform:none;box-shadow:none;border-color:var(--ln)}
+ .row:hover,.ib:hover,.lgbtn:hover{border-color:var(--ln)}
+ .sheet [data-ed]:hover{background:none;outline:0}
+ .sheet .rc:hover,.sheet .cki:hover,.stage [data-lgo]:hover{background:none}
+ .slot-ed label:hover{border-color:var(--ln);background:var(--sf2)}
+}
+
+/* messages sit above the bottom bar; sheets respect the real phone viewport */
+.toast{bottom:calc(92px + env(safe-area-inset-bottom));max-width:calc(100vw - 24px)}
+@supports(height:100dvh){.snb{max-height:92dvh}.lgs{max-height:82dvh}}
+
+@media print{
+ .shw{width:auto!important;height:auto!important;margin:0}
+ .shw .sheet{position:static!important;transform:none!important}
+}

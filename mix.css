@@ -1,0 +1,57 @@
+/* ===== v28 "Field Mix": rounded, roomy controls + warm paper and amber. Loads before mobile.css. ===== */
+:root{--bg:#FAF8F3;--sf:#fff;--sf2:#F3EFE6;--tx:#16130E;--mu:#5E574B;--ln:#E2DBCC;--ac:#F2A900;--bl:#16130E;--desk:#E7E2D5;--rc:20px;--rb:16px;
+--sh:0 1px 2px rgba(22,19,14,.05),0 14px 30px -16px rgba(22,19,14,.22)}
+[data-t=dark]{--bg:#000;--sf:#111113;--sf2:#1A1A1D;--tx:#F5F5F6;--mu:#9A9AA2;--ln:#26262A;--ac:#FFB81C;--bl:#FFB81C;--desk:#000;
+--sh:0 1px 0 #ffffff0a inset,0 18px 36px -18px #000}
+html,body{background:var(--bg)}
+body:has(.ew){background:var(--desk)}[data-t=dark] body:has(.ew){background:#000}
+[data-t=dark] .top{background:color-mix(in srgb,#000 82%,transparent)}
+[data-t=dark] .nav{background:color-mix(in srgb,#111113 94%,transparent)}
+[data-t=dark] .etb,[data-t=dark] .lgs{background:#111113}
+
+/* controls */
+.btn,.nx,.ab{border-radius:var(--rb)}.btn{min-height:48px}
+.btn.p,.nx.dk{background:var(--ac);color:#16130E}
+.ib{width:44px;height:44px;border-radius:var(--rb)}
+.ib.av{font:800 13px var(--font);letter-spacing:.02em;color:var(--tx);background:var(--sf2);border-color:transparent}
+.ib.av svg{display:block}
+input,textarea,select{min-height:48px;border-radius:14px}
+.ab.on,.al button.on{background:var(--ac);color:#16130E}
+.eh button,.lgh button{color:var(--tx)}
+.etb,.lgs,.snb{border-radius:26px 26px 0 0}
+
+/* home */
+.h1{font:800 36px/1.05 var(--font);letter-spacing:-.04em}
+.sub{font-size:14px}
+.search{height:54px;border-radius:var(--rc)}
+.sec{font:700 12px/1 var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--mu);margin:34px 0 12px}
+.tile,.row,.pane,.bkc,.empty{border-radius:var(--rc)}
+.tile{padding:10px 10px 16px}.tmn{border-radius:14px}
+.pane{padding:20px}
+.tile b{font-weight:700}
+
+/* the whole Continue bar is one big button */
+html[data-t] .cont{background:var(--ac);color:#16130E;border:0;border-radius:var(--rc);cursor:pointer;box-shadow:0 18px 36px -22px rgba(242,169,0,.85);transition:transform .15s}
+html[data-t] .cont::before{display:none}
+.cont:active{transform:scale(.99)}
+.cont:focus-visible{outline:3px solid var(--tx);outline-offset:3px}
+html[data-t] .ci small{color:#16130E;font-weight:800;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+html[data-t] .ci h2{color:#16130E}
+html[data-t] .ci p{color:rgba(22,19,14,.8)}
+html[data-t] .cont .btn.p{background:#16130E;color:var(--ac);box-shadow:none;border:0;pointer-events:none}
+
+/* bottom bar */
+.nav{border-radius:28px}
+.nav button{border-radius:22px}
+.nav button.on{color:var(--tx);background:color-mix(in srgb,var(--ac) 24%,transparent)}
+[data-t=dark] .nav button.on{color:var(--ac);background:#FFB81C1F}
+
+/* settings */
+.stk{display:flex;flex-direction:column;gap:14px;max-width:640px}
+.stk .pane{margin:0}
+.stk .pane .sfl{margin:0 0 12px}
+.stk .pane h3{margin-bottom:8px}
+.seg{display:flex;gap:4px;padding:4px;background:var(--sf2);border:1px solid var(--ln);border-radius:var(--rb);margin-top:10px}
+.seg button{flex:1;min-height:46px;border:0;background:transparent;border-radius:12px;font:600 14px var(--font);color:var(--mu)}
+.seg button.on{background:var(--sf);color:var(--tx);box-shadow:var(--sh)}
+.stk .bkc{margin-top:10px}
