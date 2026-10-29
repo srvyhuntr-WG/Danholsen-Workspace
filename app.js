@@ -7,7 +7,7 @@ const eff=()=>theme==='auto'?(matchMedia('(prefers-color-scheme: dark)').matches
 const RELAY_URL='https://script.google.com/macros/s/AKfycbzpA-xXhKiRGUWXdWjo86tUsDbJqf3whW7h4z5JRILA6CKg8N-Qbd0PzBqVIl2HXldd/exec',RELAY_KEY='dw-8581750528ec08a1';
 let AU=Object.assign({on:false,remind:true},LS('dw.auto',{}));
 const bkJSON=()=>JSON.stringify({app:'danholsen-workspace',v:2,at:new Date().toISOString(),docs,lib,sigs,sigdef:sigDef,sigauto:sigAuto,msgs}),bkName=()=>`danholsen-backup-${new Date().toISOString().slice(0,10)}.json`,DAY=864e5,lastBk=()=>LS('dw.lastbk',0)||0;
-const bnr=()=>{if(!AU.remind||!docs.length)return'';const lb=lastBk();if(Date.now()-lb<DAY)return'';return`<button class="bkbn" id="bkn"><span><b>Back up your documents</b><small>${lb?'Last backup '+ago(lb)+'.':'No backup yet.'} Tap to save or send a copy.</small></span><i>Back up</i></button>`};
+const bnr=()=>{if(!AU.remind||!docs.length)return'';const lb=lastBk();if(Date.now()-lb<DAY)return'';const bad=lb&&Date.now()-lb>7*DAY;return`<button class="bkbn${bad?' bad':''}" id="bkn"><span><b>${bad?'Not backed up for '+Math.floor((Date.now()-lb)/DAY)+' days':'Back up your documents'}</b><small>${lb?'Last backup '+ago(lb)+'.':'No backup yet.'} Tap to save or send a copy.</small></span><i>Back up</i></button>`};
 const e=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const J={left:'flex-start',center:'center',right:'flex-end'},uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const mk=a=>Object.fromEntries(a.map(([k,l,df])=>[k,{l,df:df||''}]));
@@ -169,7 +169,10 @@ async function exportBk(){const name=`danholsen-backup-${new Date().toISOString(
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);SV('dw.lastbk',Date.now());toast('Backup downloaded');render()}
 function importBk(file){const r=new FileReader();r.onload=()=>{let d;try{d=JSON.parse(r.result)}catch{}
  if(!d||d.app!=='danholsen-workspace'||!Array.isArray(d.docs)){toast('That is not a Danholsen backup file');return}
- if(!confirm(`Import ${d.docs.length} document(s)? Existing documents are kept; matching ones are updated if the backup is newer.`))return;
+ const m0=new Map(docs.map(x=>[x.id,x]));let nw=0,up=0,sm=0;d.docs.forEach(x=>{if(!x||!x.id||!TPL[x.t])return;const o=m0.get(x.id);if(!o)nw++;else if((x.u||0)>(o.u||0))up++;else sm++});
+ const nl=(d.lib||[]).filter(l=>l&&l.id&&l.src&&!lib.some(x=>x.id===l.id)).length,ns=(d.sigs||[]).filter(l=>l&&l.id&&l.src&&!sigs.some(x=>x.id===l.id)).length;
+ if(!confirm('Backup'+(d.at?' from '+new Date(d.at).toLocaleDateString():'')+'\n\n\u2022 '+nw+' new document'+(nw==1?'':'s')+'\n\u2022 '+up+' updated (backup is newer)\n\u2022 '+sm+' already here, unchanged\n\u2022 '+nl+' new logo'+(nl==1?'':'s')+', '+ns+' new signature'+(ns==1?'':'s')+'\n\nNothing is deleted. A restore point is saved first. Continue?'))return;
+ snapTake('Before import');
  let leg=null;if(Array.isArray(d.lib))d.lib.forEach(l=>{if(l&&l.id&&l.src&&!lib.some(x=>x.id===l.id))lib.push({id:l.id,src:l.src})});
  else if(Array.isArray(d.logos))leg=legacyOf(d.logos,d.lsz);
  if(d.msgs&&typeof d.msgs==='object'){msgs=Object.assign({},msgs,d.msgs);SV('dw.msgs',msgs)}
@@ -302,7 +305,7 @@ function sigOpen(k){sgk=k;sigPanel()}
 function sigPanel(){let p=$('#sgp');if(!p){p=document.createElement('div');p.id='sgp';p.className='lgp';document.body.appendChild(p)}
  const T=resolveTpl(cur),g=cur.sg&&cur.sg[sgk],it=g&&sigs.find(x=>x.id===g.id);
  p.innerHTML=`<div class="lgb" data-sg="close"></div><div class="lgs"><div class="lgh"><b>Signature</b><button data-sg="close">Done</button></div><p class="lgn">For the \u201c${e((T.F[sgk]||{}).l||'Signature')}\u201d field. Import a photo or scan once: the paper is removed automatically and it is kept on this device for every report and form. Tap the star on a signature to make it your default.</p>
- ${it?`<div class="sgp0"><img src="${it.src}" alt="Signature"></div><div class="lgx"><label class="sz">Size <b id="sgv">${g.s||100}%</b><input type="range" id="sgz" min="50" max="200" step="10" value="${g.s||100}"></label><button class="btn d" data-sg="rm">Remove from this field</button></div>`:''}
+ ${it?`<div class="sgp0"><img src="${it.src}" alt="Signature"></div><div class="lgx"><div class="sz szh">Size <b id="sgv">${g.s||100}%</b></div><div class="szr"><button class="nx szb" type="button" data-szs="-1" aria-label="Smaller by 1 percent (hold to repeat)">−</button><input type="range" id="sgz" min="25" max="250" step="1" value="${g.s||100}" aria-label="Signature size"><button class="nx szb" type="button" data-szs="1" aria-label="Larger by 1 percent (hold to repeat)">+</button></div><div class="szq">${[50,75,100,125,150].map(p=>`<button class="chip${(g.s||100)===p?' on':''}" type="button" data-szp="${p}">${p}%</button>`).join('')}</div><button class="btn d" data-sg="rm">Remove from this field</button></div>`:''}
  <h3>${sigs.length?'Your signatures':'Import a signature'}</h3><div class="lgr">${sigs.map(x=>`<span class="lgc sgc${it&&it.id===x.id?' sel':''}${x.id===sigDef?' isdef':''}"><button data-sg="use" data-id="${x.id}" aria-label="Use this signature"><img src="${x.src}" alt=""></button><button class="libx" data-sg="del" data-id="${x.id}" aria-label="Delete saved signature">\u00d7</button><button class="sgdf${x.id===sigDef?' on':''}" data-sg="def" data-id="${x.id}" aria-label="${x.id===sigDef?'Remove as default':'Set as default'}" aria-pressed="${x.id===sigDef}">\u2605</button>${x.id===sigDef?'<em class="dfl">Default</em>':''}</span>`).join('')}<label class="lgc up"><span>+</span><small>Import</small><input type="file" accept="image/*" hidden data-sgf="1"></label></div>
  <p class="lgn">Tip: sign in dark ink on plain white paper and photograph it in good light.</p></div>`}
 document.addEventListener('click',ev=>{const b=ev.target.closest('#sgp [data-sg]');if(!b||view!=='ed')return;const a=b.dataset.sg;
@@ -313,6 +316,21 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('#sgp [data-sg]
  else if(a==='del'){if(!confirm('Delete this saved signature? Fields using it will lose it.'))return;delSig(b.dataset.id);paint()}
  sigPanel()});
 document.addEventListener('input',ev=>{if(ev.target.id!=='sgz'||view!=='ed'||!cur.sg||!cur.sg[sgk])return;const v=+ev.target.value;cur.sg[sgk].s=v;const o=$('#sgv');if(o)o.textContent=v+'%';paint()});
+/* signature size: 1% steps, hold-to-repeat minus/plus, quick presets; one undo step per adjustment */
+{let hold=null,rep=null;
+ const sync=v=>{const r=$('#sgz'),o=$('#sgv');if(r)r.value=v;if(o)o.textContent=v+'%';document.querySelectorAll('#sgp [data-szp]').forEach(b=>b.classList.toggle('on',+b.dataset.szp===v))},
+ setS=v=>{if(view!=='ed'||!cur.sg||!cur.sg[sgk])return;v=Math.max(25,Math.min(250,Math.round(v)));if(cur.sg[sgk].s===v)return;cur.sg[sgk].s=v;sync(v);paint()},
+ cur$=()=>(cur.sg&&cur.sg[sgk]&&cur.sg[sgk].s)||100,
+ stop=()=>{clearTimeout(hold);clearInterval(rep);hold=rep=null};
+ document.addEventListener('pointerdown',ev=>{if(view!=='ed')return;
+  if(ev.target.id==='sgz'){pushH();return}
+  const b=ev.target.closest&&ev.target.closest('#sgp [data-szs]');if(!b)return;ev.preventDefault();stop();pushH();
+  const d=+b.dataset.szs;setS(cur$()+d);hold=setTimeout(()=>{rep=setInterval(()=>setS(cur$()+d),55)},380)});
+ ['pointerup','pointercancel','pointerleave','blur'].forEach(t=>addEventListener(t,stop,true));
+ document.addEventListener('click',ev=>{if(view!=='ed')return;
+  if(ev.target.closest&&ev.target.closest('[data-undo]'))setTimeout(()=>{if($('#sgp')&&cur.sg&&cur.sg[sgk])sync(cur$())},0);
+  const p=ev.target.closest&&ev.target.closest('#sgp [data-szp]');if(p){pushH();setS(+p.dataset.szp);return}
+  const b=ev.target.closest&&ev.target.closest('#sgp [data-szs]');if(b&&ev.detail===0){pushH();setS(cur$()+(+b.dataset.szs))}})}
 document.addEventListener('click',ev=>{const dl=ev.target.closest('[data-sigdel]');if(dl&&view==='set'&&confirm('Delete this saved signature? Fields using it will lose it.')){delSig(dl.dataset.sigdel);render()}});
 document.addEventListener('click',ev=>{if(view!=='set')return;const c=ev.target.closest('[data-sgdef],[data-sgren]');if(!c)return;
  if(c.dataset.sgdef){setDef(sigDef===c.dataset.sgdef?null:c.dataset.sgdef);render();toast(sigDef?'Default signature set':'Default removed')}
@@ -332,7 +350,42 @@ let meEdit=null,meD=null;
 const hasMe=()=>!!(ME.n||ME.r||ME.p||ME.m||ME.pic);
 const avIn=(m=ME)=>m.pic?`<img src="${e(m.pic)}" alt="">`:((m.n||'').trim()?(m.n.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase()):IC.cfg);
 const thIc=()=>eff()==='dark'?IC.sun:IC.moon;
-const bar=(l,r='')=>{const x=l===brand?'':l;return`<header class="top"><div class="tr1">${brand}<div class="sp"></div><button class="ib" id="thm" aria-label="Switch between light and dark">${thIc()}</button><button class="ib av" id="cfg" aria-label="Your profile and settings">${avIn()}</button></div>${x||r?`<div class="tr2">${x}<div class="sp"></div>${r}</div>`:''}</header>`};
+const bar=(l,r='')=>{const x=l===brand?'':l;return`<header class="top"><div class="tr1">${brand}<div class="sp"></div><span class="offc" role="status">Offline</span><button class="ib" id="thm" aria-label="Switch between light and dark">${thIc()}</button><button class="ib av" id="cfg" aria-label="Your profile and settings">${avIn()}</button></div>${x||r?`<div class="tr2">${x}<div class="sp"></div>${r}</div>`:''}</header>`};
+const CI=(p=>Object.fromEntries(Object.entries(p).map(([k,v])=>[k,`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${v}</svg>`])))({
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+phone:'<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/>',
+box:'<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+up:'<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+down:'<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',
+mail:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 8l9 6 9-6"/>',
+info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/>',
+refresh:'<path d="M20 11a8 8 0 0 0-14.5-3.5M4 4v4h4M4 13a8 8 0 0 0 14.5 3.5M20 20v-4h-4"/>',
+trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+chev:'<path d="M9 6l6 6-6 6"/>',
+shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+logo:'<rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="2"/><path d="M21 16l-5-5-9 9"/>'});
+/* ---------- v58: storage meter, restore points, changelog ---------- */
+var PERSIST=null,SNAPS=[];
+const LSCAP=5*1048576,MB=n=>(n/1048576).toFixed(n<10485760?1:0),
+ lsBytes=()=>{let n=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);n+=(k.length+(localStorage.getItem(k)||'').length)*2}}catch{}return n},
+ CHANGES=[['Edit PDF: open any PDF, tap a line of text to change it, add new text, and save a new PDF','Bottom menu is locked to the bottom edge of the screen on phones and tablets','Settings redesigned and reorganised','Version card with live update status and a dot on Settings when an update is ready','Restore points: the last 3 copies are kept automatically and before every import','Import shows exactly what will be added or updated before it runs','Storage meter, and a request to keep your data safe from automatic clean-up','Offline indicator, and the last backup-email result shown in Settings','Reset option for a clean start']];
+async function snapList(){try{return(await idbGet('snaps'))||[]}catch{return[]}}
+async function snapTake(why){const json=bkJSON(),n=docs.length;try{if(!docs.length&&!lib.length&&!sigs.length)return;const l=await snapList();l.unshift({at:Date.now(),why,n,json});const k=l.slice(0,3);await idbSet('snaps',k);SNAPS=k.map(({at,why,n})=>({at,why,n}));SV('dw.lastsnap',Date.now())}catch{}}
+async function snapRestore(i){const l=await snapList(),sn=l[i];if(!sn)return;
+ if(!confirm('Restore the copy from '+new Date(sn.at).toLocaleString()+' ('+sn.n+' document'+(sn.n==1?'':'s')+')?\n\nYour current documents are saved as a restore point first, then replaced.'))return;
+ let d;try{d=JSON.parse(sn.json)}catch{toast('That copy could not be read');return}
+ await snapTake('Before restore');
+ docs=Array.isArray(d.docs)?d.docs:[];lib.length=0;lib.push(...(d.lib||[]));sigs.length=0;sigs.push(...(d.sigs||[]));if(d.msgs)msgs=Object.assign({},d.msgs);
+ SV('dw.docs',docs);SV('dw.lib',lib);SV('dw.sigs',sigs);SV('dw.msgs',msgs);if(d.sigdef&&d.sigdef!==sigDef&&sigs.some(x=>x.id===d.sigdef))setDef(d.sigdef);
+ render();toast('Restored')}
+async function resetAll(){if(!confirm('Erase ALL documents, logos, signatures and settings from this device?\n\nThis cannot be undone. Export a backup first if you might need anything.'))return;
+ const w=prompt('Type ERASE to confirm');if((w||'').trim().toUpperCase()!=='ERASE'){toast('Nothing was erased');return}
+ try{Object.keys(localStorage).filter(k=>k.startsWith('dw.')).forEach(k=>localStorage.removeItem(k))}catch{}
+ try{indexedDB.deleteDatabase('dw-bk')}catch{}
+ try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}catch{}
+ try{const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()))}catch{}
+ location.reload()}
 const meSec=()=>{const ed=meEdit===null?!hasMe():meEdit;if(ed&&!meD)meD={...ME};if(!ed)meD=null;
  if(!ed)return`<section class="pane"><h3>Your details</h3><div class="mev"><span class="mea">${avIn()}</span><div class="mei"><b>${e(ME.n||'')}</b>${[ME.r,ME.p,ME.m].filter(Boolean).map(v=>`<span>${e(v)}</span>`).join('')}</div></div><div class="mea2"><button class="btn" id="meE" type="button">${IC.pen}<span>Edit</span></button><button class="btn" id="meR" type="button">${IC.reset}<span>Reset</span></button></div></section>`;
  const f=(l,k,t='text')=>`<label class="sfl">${l}<input type="${t}" data-md="${k}" value="${e(meD[k]||'')}" autocomplete="off"></label>`;
@@ -345,14 +398,14 @@ document.addEventListener('click',ev=>{const t=ev.target.closest('#thm,#meE,#meS
  if(t.id==='meE'){meEdit=true;meD={...ME};render();return}
  if(t.id==='meC'){meEdit=false;meD=null;render();return}
  if(t.id==='mePx'){if(meD){delete meD.pic;render()}return}
- if(t.id==='meR'){if(confirm('Clear your name, photo and contact details from this device?')){ME={};SV('dw.me',ME);AU.on=false;SV('dw.auto',AU);meEdit=null;meD=null;toast('Details reset');render();scrollTo({top:0})}return}
+ if(t.id==='meR'){if(confirm('Clear your name, photo and contact details from this device?')){ME={};SV('dw.me',ME);AU.on=false;SV('dw.auto',AU);meEdit=null;meD=null;toast('Details reset');render();scrollTo({top:0});{const m=document.querySelector('main.wrap');if(m)m.scrollTop=0}}return}
  if(t.id==='meS'&&meD){const d={};['n','r','p','m'].forEach(k=>{const v=String(meD[k]||'').trim();if(v)d[k]=v});if(meD.pic)d.pic=meD.pic;
   if(d.m&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.m)){toast('Check your email address');return}
-  ME=d;SV('dw.me',ME);meEdit=false;meD=null;toast('Details saved');render();scrollTo({top:0})}});
+  ME=d;SV('dw.me',ME);meEdit=false;meD=null;toast('Details saved');render();scrollTo({top:0});{const m=document.querySelector('main.wrap');if(m)m.scrollTop=0}}});
 IC.fd='<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 const BRAND=window.DG_UI||'danholsen-full.png';
 const brand=`<div class="brand bp" id="home"><img class="bpi" src="${BRAND}" width="${Math.round(30*1600/364)}" height="30" decoding="sync" alt="Danholsen Global Services"><span class="bpv"></span><span class="bpw">WORKSPACE</span></div>`;
-const nav=v=>`<nav class="nav"><button id="home" class="${v==='home'?'on':''}">${IC.home}<span>Home</span></button><button id="files" class="${v==='files'?'on':''}">${IC.files}<span>Files</span></button><button id="set" class="${v==='set'?'on':''}">${IC.set}<span>Library</span></button><button id="cfg" class="${v==='cfg'?'on':''}">${IC.cfg}<span>Settings</span></button></nav>`;
+const nav=v=>{const B=(id,ic,l,x='')=>`<button id="${id}" class="${v===id||(id==='set'&&v==='set')?'on':''}"${v===id?' aria-current="page"':''} aria-label="${l}">${ic}<span>${l}</span>${x}</button>`;return`<nav class="nav" aria-label="Main">${B('home',IC.home,'Home')}${B('files',IC.files,'Files')}${B('set',IC.set,'Library')}${B('cfg',IC.cfg,'Settings',upd&&v!=='cfg'?'<i class="ndot" role="img" aria-label="Update ready"></i>':'')}</nav>`};
 function applyTheme(){const h=document.documentElement;h.classList.add('nt');h.dataset.t=eff();const mt=document.querySelector('meta[name=theme-color]');if(mt)mt.content=TC();requestAnimationFrame(()=>requestAnimationFrame(()=>h.classList.remove('nt')))}
 /* ---------- home: quick actions, attention strip, filters, pinned ---------- */
 let hf='all';
@@ -363,7 +416,7 @@ const isRep=d=>/report/i.test((TPL[d.t]||{}).n||''),
  FL={all:()=>true,rep:isRep,form:d=>!isRep(d),td:isTd,us:unsig},
  STAR='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',
  qi=p=>`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`,
- qa=()=>`<div class="qa"><button class="qb" data-qa="rep">${qi('<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>')}<span>New report</span></button><button class="qb" data-qa="form">${qi('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>')}<span>New form</span></button><button class="qb" data-qa="files">${qi('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>')}<span>Files</span></button><button class="qb" data-qa="bk">${qi('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>')}<span>Back up</span></button></div>`,
+ qa=()=>`<div class="qa"><button class="qb" data-qa="rep">${qi('<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/>')}<span>New report</span></button><button class="qb" data-qa="form">${qi('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>')}<span>New form</span></button><button class="qb" data-qa="files">${qi('<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>')}<span>Files</span></button><button class="qb" data-qa="bk">${qi('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>')}<span>Back up</span></button><button class="qb" data-qa="pdf">${qi('<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 14l1.5-1.5 3 3L17 12"/>')}<span>Edit PDF</span></button></div>`,
  att=n=>n?`<button class="bkbn att" data-qa="us"><span><b>${n} document${n>1?'s':''} not signed yet</b><small>Review and add signatures before sending.</small></span><i>Review</i></button>`:'',
  chips=(nt,nu)=>`<div class="chips" role="group" aria-label="Filter documents">${[['all','All'],['rep','Reports'],['form','Forms'],...(nt?[['td','Today',nt]]:[]),...(nu?[['us','Unsigned',nu]]:[])].map(([k,l,n])=>`<button class="chip${hf===k?' on':''}" data-hf="${k}" aria-pressed="${hf===k}">${l}${n?`<small>${n}</small>`:''}</button>`).join('')}</div>`,
  kindOf=k=>/timesheet/i.test((TPL[k]||{}).n||'')?'Timesheet':/report/i.test((TPL[k]||{}).n||'')?'Report':'Form',
@@ -377,15 +430,51 @@ function applyF(){const q=(($('#q')||{}).value||'').toLowerCase().trim(),f=FL[hf
  if(rl){if(q||hf!=='all')rl.dataset.all='1';else if(!rl.dataset.keep)delete rl.dataset.all;
   const v=rows.filter(r=>r.style.display!=='none'),shown=rl.dataset.all?v:v.slice(0,6);if(shown.length)shown[shown.length-1].classList.add('lv')}
  const fe=$('#fe');if(fe)fe.style.display=n||!docs.length?'none':''}
-function render(){if(view!=='cfg'){meEdit=null;meD=null}document.documentElement.dataset.t=eff();document.querySelectorAll('#lgp,#sgp').forEach(q=>q.remove());{const mt=document.querySelector('meta[name=theme-color]');if(mt)mt.content=TC()}const A=$('#app'),L=[...docs].sort((a,b)=>b.u-a.u),last=L[0];
- if(view==='home'){const NU=docs.filter(unsig).length,NT=docs.filter(isTd).length,PN=L.filter(d=>d.pin);if((hf==='us'&&!NU)||(hf==='td'&&!NT))hf='all';A.innerHTML=bar(brand)+`<main class="wrap"><h1 class="h1">${greet()}</h1><p class="sub">${new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>${bnr()}${qa()}${att(NU)}<input id="q" class="search" type="search" placeholder="Search reports and forms" aria-label="Search documents">${last?`<section class="cont" role="button" tabindex="0" data-o="${last.id}" aria-label="Open ${e(last.title)}"><div class="mini cpg">${sheet(last)}</div><div class="ci"><small>Continue editing</small><h2>${e(last.title)}</h2><p>${last.title===TPL[last.t].n?'':TPL[last.t].n+' \u00b7 '}Edited ${ago(last.u)}</p><button class="btn p" data-o="${last.id}">Open</button></div></section>`:''}${shd('newdoc','New document','Start from a Danholsen template',Object.keys(TPL).length+' templates')}<div id="ngrid">${[['Forms',k=>!/report|timesheet/i.test(TPL[k].n)],['Reports',k=>/report/i.test(TPL[k].n)],['Timesheets',k=>/timesheet/i.test(TPL[k].n)]].map(([g,f])=>{const ks=Object.keys(TPL).filter(f);return ks.length?`<div class="dgl"><span>${g}</span><em>${ks.length}</em></div><div class="dlist">${ks.map(tcard).join('')}</div>`:''}).join('')}</div>${PN.length?`${shd('','Pinned','Kept at the top for quick access',PN.length+' pinned')}<div class="dlist" id="prail">${PN.map((d,i)=>card(d,i)).join('')}</div>`:''}${shd('recent','Recent','Your latest reports and forms',L.length?L.length+(L.length==1?' document':' documents'):'')}${L.length?chips(NT,NU):''}<div class="dlist" id="rail">${L.length?L.map((d,i)=>card(d,i)).join(''):'<p class="empty">Nothing yet. Choose a template above to start.</p>'}</div>${L.length>6?`<button class="dmore" id="dmore" type="button">Show all ${L.length} documents</button>`:''}<p class="empty" id="fe" style="display:none">No documents match this filter.</p></main>`+nav('home');applyF()}
+let SC0=null;
+function render(){if(view!=='pdfed'&&window.PE)PE.leave();{const m=document.querySelector('main.wrap');SC0=m?m.scrollTop:null}if(view!=='cfg'){meEdit=null;meD=null}document.documentElement.dataset.t=eff();document.querySelectorAll('#lgp,#sgp').forEach(q=>q.remove());{const mt=document.querySelector('meta[name=theme-color]');if(mt)mt.content=TC()}const A=$('#app'),L=[...docs].sort((a,b)=>b.u-a.u),last=L[0];
+ if(view==='home'){const NU=docs.filter(unsig).length,NT=docs.filter(isTd).length,PN=L.filter(d=>d.pin);if((hf==='us'&&!NU)||(hf==='td'&&!NT))hf='all';A.innerHTML=bar(brand)+`<main class="wrap"><h1 class="h1">${greet()}</h1><p class="sub">${new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>${bnr()}${qa()}${att(NU)}<input id="q" class="search" type="search" placeholder="Search reports and forms" aria-label="Search documents">${last?`<section class="cont" role="button" tabindex="0" data-o="${last.id}" aria-label="Open ${e(last.title)}"><div class="mini cpg">${sheet(last)}</div><div class="ci"><small>Continue editing</small><h2>${e(last.title)}</h2><p>${last.title===TPL[last.t].n?'':TPL[last.t].n+' \u00b7 '}Edited ${ago(last.u)}</p></div><button class="btn p cop" type="button" tabindex="-1" data-o="${last.id}"><span>Open</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></section>`:''}${shd('newdoc','New document','Start from a Danholsen template',Object.keys(TPL).length+' templates')}<div id="ngrid">${[['Forms',k=>!/report|timesheet/i.test(TPL[k].n)],['Reports',k=>/report/i.test(TPL[k].n)],['Timesheets',k=>/timesheet/i.test(TPL[k].n)]].map(([g,f])=>{const ks=Object.keys(TPL).filter(f);return ks.length?`<div class="dgl"><span>${g}</span><em>${ks.length}</em></div><div class="dlist">${ks.map(tcard).join('')}</div>`:''}).join('')}</div>${PN.length?`${shd('','Pinned','Kept at the top for quick access',PN.length+' pinned')}<div class="dlist" id="prail">${PN.map((d,i)=>card(d,i)).join('')}</div>`:''}${shd('recent','Recent','Your latest reports and forms',L.length?L.length+(L.length==1?' document':' documents'):'')}${L.length?chips(NT,NU):''}<div class="dlist" id="rail">${L.length?L.map((d,i)=>card(d,i)).join(''):'<p class="empty">Nothing yet. Choose a template above to start.</p>'}</div>${L.length>6?`<button class="dmore" id="dmore" type="button">Show all ${L.length} documents</button>`:''}<p class="empty" id="fe" style="display:none">No documents match this filter.</p></main>`+nav('home');applyF()}
+ if(view==='pdfed'){A.innerHTML=bar(`<button class="ib" id="home" aria-label="Back">${IC.back}</button><h1 class="h1 s">Edit PDF</h1>`)+`<main class="wrap pe" id="pe"></main>`;PE.mount()}
  if(view==='set'){A.innerHTML=bar(`<button class="ib" id="home" aria-label="Back">${IC.back}</button><h1 class="h1 s">Library &amp; messages</h1>`)+`<main class="wrap"><div class="pane"><p class="lead">Every new document starts with the Danholsen logo on the left. Each document then carries its own logos - open a document and tap its header (or the Logos button) to add, remove, reorder or resize them. Save client and certification logos here so they are one tap away.</p><h3>Saved logos</h3><div class="libg"><div class="libc"><img src="${DG}" alt="Danholsen"><small>Default</small></div>${lib.map(l=>`<div class="libc"><img src="${l.src}" alt=""><button class="libx" data-libdel="${l.id}" aria-label="Remove logo">\u00d7</button></div>`).join('')}<label class="libc up"><span>+</span><small>Add logo</small><input type="file" accept="image/*" hidden data-libf="1"></label></div><h3>Saved signatures</h3><p class="lead">Import a signature once and keep as many as you need. Your <b>default</b> signature can be added to any Signature field with one tap (<b>Use default</b>), or placed automatically on new documents. The paper background is removed for you.</p><div class="sgl">${sigs.map((x,n)=>`<div class="sgcard${x.id===sigDef?' isdef':''}"><div class="sgpv"><img src="${x.src}" alt=""></div><div class="sgmeta"><b>${e(sgName(x,n))}</b>${x.id===sigDef?'<span class="dfb2">Default</span>':''}</div><div class="sgact"><button class="lgbtn" data-sgdef="${x.id}">${x.id===sigDef?'Remove default':'Set as default'}</button><button class="lgbtn" data-sgren="${x.id}">Rename</button><button class="lgbtn dn" data-sigdel="${x.id}">Delete</button></div></div>`).join('')}<label class="sgcard up"><span>+</span><b>Import signature</b><small>Photo or scan</small><input type="file" accept="image/*" hidden data-sglib="1"></label></div><label class="sgauto"><input type="checkbox" data-sgauto="1"${sigAuto?' checked':''}><span><b>Sign new documents automatically</b><small>Adds your default signature to the Danholsen signature field of each new report, timesheet and transmittal. The Job Completion Form is left for the client to sign.</small></span></label>${msgSet()}</div></main>`+nav('set')}
- if(view==='cfg'){const lb=LS('dw.lastbk',null);A.innerHTML=bar(`<button class="ib" id="home" aria-label="Back">${IC.back}</button><h1 class="h1 s">Settings</h1>`)+`<main class="wrap"><div class="stk">${meSec()}<section class="pane"><h3>Appearance</h3><div class="seg" role="group" aria-label="Theme">${[['light','Light'],['dark','Dark'],['auto','Match phone']].map(([k,l])=>`<button data-th="${k}" class="${theme===k?'on':''}" aria-pressed="${theme===k}">${l}</button>`).join('')}</div></section><section class="pane"><h3>App updates</h3><div class="bkc"><div><b id="verl">${verText()}</b><small>The app updates itself when you are online. Tap to check right now.</small></div><button class="btn p" id="upd">Check for updates</button></div></section><section class="pane"><h3>Backup</h3><p class="lead">Your documents and logos live on this device. Export a backup file to keep them safe or move them to another phone or computer.</p><div class="bkc"><div><b>Export backup</b><small>${docs.length} document${docs.length==1?'':'s'} \u00b7 ${lib.length} saved logo${lib.length==1?'':'s'} \u00b7 ${sigs.length} signature${sigs.length==1?'':'s'} \u00b7 Last backup: ${lb?new Date(lb).toLocaleDateString():'never'}</small></div><button class="btn p" id="bkx">Export</button></div><div class="bkc"><div><b>Import backup</b><small>Adds documents from a backup file. Nothing on this device is deleted.</small></div><label class="btn">Import<input type="file" accept=".json,application/json" hidden data-bk="1"></label></div></section><section class="pane"><h3>Automatic backup</h3><p class="lead">A web app cannot run while it is closed, so this happens when you open the app and it has been a day since the last copy.</p><label class="tgl"><span><b>Email me a backup daily</b><small>${AU.on?(LS('dw.lastrelay',0)?'Last sent '+new Date(LS('dw.lastrelay',0)).toLocaleString():'Not sent yet'):'Off'}</small></span><input type="checkbox" data-au="on" ${AU.on?'checked':''}></label><p class="lead" style="margin-top:0">${ME.m?'Backups are sent to <b>'+e(ME.m)+'</b>.':'Add your email under Your details above first.'}</p><button class="btn" id="aut">Send test backup</button><label class="tgl"><span><b>Remind me when a backup is overdue</b><small>Shows a banner on Home after a day without a backup</small></span><input type="checkbox" data-au="remind" ${AU.remind?'checked':''}></label>${window.showDirectoryPicker?`<div class="bkc"><div><b>Save to a folder</b><small>${LS('dw.afname','')?'Folder: '+e(LS('dw.afname',''))+'. A copy is saved there daily. Pick a Google Drive or OneDrive folder to sync it.':'Computer only. Pick a Google Drive or OneDrive folder and a copy is saved there daily.'}</small></div><button class="btn" id="afd">${LS('dw.afname','')?'Change':'Choose'}</button></div>`:''}</section></div></main>`+nav('cfg')}
+ if(view==='cfg'){const lb=LS('dw.lastbk',null),lrl=LS('dw.lastrelay',0),rl=LS('dw.relaylast',null),fresh=lb&&Date.now()-lb<24*36e5,stale=lb&&Date.now()-lb>7*DAY,fd=t=>new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}),ft=t=>new Date(t).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}),
+ used=lsBytes(),pct=Math.min(100,Math.round(used/LSCAP*100)),sc=pct>=90?'bad':pct>=70?'mid':'',
+ sw=(k,on,b,sm)=>`<label class="tgl"><span><b>${b}</b><small>${sm}</small></span><input type="checkbox" switch role="switch" data-au="${k}" ${on?'checked':''}></label>`;
+ A.innerHTML=bar(`<button class="ib" id="home" aria-label="Back">${IC.back}</button><h1 class="h1 s">Settings</h1>`)+`<main class="wrap"><div class="stk cfgp">
+<section class="pane"><div class="ch"><span class="ci2">${CI.sun}</span><div><h3>Appearance</h3><small>Choose how the app looks</small></div></div><div class="seg" role="group" aria-label="Theme">${[['light','Light',CI.sun],['dark','Dark',CI.moon],['auto','Auto',CI.phone]].map(([k,l,ic])=>`<button data-th="${k}" class="${theme===k?'on':''}" aria-pressed="${theme===k}">${ic}<span>${l}</span></button>`).join('')}</div></section>
+${meSec()}
+<section class="pane"><div class="ch"><span class="ci2">${CI.logo}</span><div><h3>Defaults</h3><small>What new documents start with</small></div></div>
+<label class="tgl"><span><b>Sign new documents automatically</b><small>Adds your default signature to new reports and timesheets</small></span><input type="checkbox" switch role="switch" data-sgauto="1" ${sigAuto?'checked':''}></label>
+<button class="navrow" type="button" data-go="set"><span><b>Logos and signatures</b><small>${lib.length+1} logo${lib.length?'s':''} \u00b7 ${sigs.length} signature${sigs.length==1?'':'s'}</small></span>${CI.chev}</button>
+<button class="navrow" type="button" data-go="msg"><span><b>Message wording</b><small>The text in the Send box when you share a PDF</small></span>${CI.chev}</button></section>
+<section class="pane"><div class="ch"><span class="ci2">${CI.mail}</span><div><h3>Automatic backup</h3><small>Runs when you open the app, once a day</small></div></div>
+${sw('on',AU.on,'Email me a backup daily',AU.on?(lrl?'Last sent '+ft(lrl):'Not sent yet'):'Off')}
+<p class="hint">${ME.m?'Sent to <b>'+e(ME.m)+'</b>':'Add your email under Your details above first.'}</p>
+${rl&&rl.r!=='ok'?`<p class="hint warn">Last attempt failed (${ft(rl.t)}): ${e(rl.r)}</p>`:''}
+<button class="btn wide" id="aut" type="button">Send test backup</button>
+${sw('remind',AU.remind,'Remind me when overdue','Shows a banner on Home after a day without a backup')}
+${window.showDirectoryPicker?`<div class="bkc"><div><b>Save to a folder</b><small>${LS('dw.afname','')?'Folder: '+e(LS('dw.afname',''))+'. A copy is saved there daily.':'Pick a Google Drive or OneDrive folder and a copy is saved there daily.'}</small></div><button class="btn" id="afd">${LS('dw.afname','')?'Change':'Choose'}</button></div>`:''}</section>
+<section class="pane about"><div class="ch"><span class="ci2">${CI.info}</span><div><h3>About</h3><small>Danholsen Workspace</small></div></div>
+<div class="verc"><img src="icon-96-v5.png" alt="" width="52" height="52"><div class="vm"><div class="vn"><small>Version</small><b id="verl">${VER||'\u2013'}</b></div><code id="bldl">${FP0?'build '+FP0:'build \u2013'}</code></div><span class="vst ${upd?'rdy':navigator.onLine?'ok':'off'}" id="updst"><i></i><em>${upd?'Update ready':navigator.onLine?'Up to date':'Offline'}</em></span></div>
+<button class="btn wide" id="upd" type="button">${CI.refresh}<span>Check for updates</span></button>
+<p class="hint" id="updnote">The app updates itself when you are online.</p>
+<details class="chg"><summary>What\u2019s new in version ${VER||'\u2013'}</summary><ul>${CHANGES[0].map(c=>`<li>${c}</li>`).join('')}</ul></details></section>
+<section class="pane"><div class="ch"><span class="ci2">${CI.box}</span><div><h3>Backup</h3><small>Your documents live on this device</small></div></div>
+<div class="stat"><div><b>${docs.length}</b><span>Document${docs.length==1?'':'s'}</span></div><div><b>${lib.length}</b><span>Logo${lib.length==1?'':'s'}</span></div><div><b>${sigs.length}</b><span>Signature${sigs.length==1?'':'s'}</span></div></div>
+<p class="bkst ${fresh?'ok':stale?'bad':'old'}"><i></i>${lb?(fresh?'Backed up ':'Last backup ')+fd(lb):'No backup yet'}</p>
+<div class="btnrow"><button class="btn p" id="bkx" type="button">${CI.up}<span>Export</span></button><label class="btn">${CI.down}<span>Import</span><input type="file" accept=".json,application/json" hidden data-bk="1"></label></div>
+<p class="hint">Import shows what will change first and keeps everything you already have.</p>
+<h4 class="subh">Storage</h4><div class="sbar" role="img" aria-label="${pct} percent of storage used"><i class="${sc}" style="width:${Math.max(pct,2)}%"></i></div>
+<p class="hint">${MB(used)} MB of about 5 MB used${pct>=70?'. Getting full: export a backup, then remove unused logos or documents.':'.'}</p>
+<p class="hint ${PERSIST===false?'warn':''}" id="persl">${PERSIST===true?'Protected: the browser will not clear this data to free up space.':PERSIST===false?'Not protected: the browser may clear this data if the phone runs low on space. Keep a recent backup.':'Checking storage protection\u2026'}</p>
+<h4 class="subh">Restore points</h4>
+${SNAPS.length?SNAPS.map((x,n)=>`<div class="snap"><span><b>${ft(x.at)}</b><small>${e(x.why)} \u00b7 ${x.n} document${x.n==1?'':'s'}</small></span><button class="btn" type="button" data-snap="${n}">Restore</button></div>`).join(''):'<p class="hint">None yet. One is saved each day you open the app, and before every import. The last 3 are kept.</p>'}</section>
+<section class="pane danger"><div class="ch"><span class="ci2 r">${CI.trash}</span><div><h3>Reset app</h3><small>Start again from a clean slate</small></div></div>
+<p class="hint" style="margin-top:0">Removes every document, logo, signature and setting from this device. Export a backup first.</p>
+<button class="btn wide dng" id="rst" type="button">Erase all data\u2026</button></section></div></main>`+nav('cfg')}
  if(view==='files'){const kf=d=>((d.pf||(d.d&&d.d.proj))||'').trim()||'Unfiled',names=[...new Set([...projs,...docs.map(kf)])],cnt=n=>docs.filter(d=>kf(d)===n).length,ls=fld?docs.filter(d=>kf(d)===fld).sort((a,b)=>b.u-a.u):[];
  A.innerHTML=bar(fld?`<button class="ib" id="fall" aria-label="All projects">${IC.back}</button><h1 class="h1 s">${e(fld)}</h1>`:brand)+`<main class="wrap">`+(fld?`<p class="sub">${ls.length} document${ls.length==1?'':'s'} \u00b7 tap one to open it</p>${fld!=='Unfiled'?'<div class="fact"><button class="lgbtn" data-rn="1">Rename folder</button><button class="lgbtn dn" data-dl="1">Delete folder</button></div>':''}${ls.length?ls.map(d=>`<div class="row frow" role="button" tabindex="0" data-o="${d.id}"><span class="fic">${IC.files}</span><div class="fmeta"><b>${e(d.title)}</b><small>${TPL[d.t].n} \u00b7 Edited ${ago(d.u)}</small></div><button class="lgbtn" data-mv="${d.id}">Move</button><button class="ib d" data-x="${d.id}" aria-label="Delete">${IC.x}</button></div>`).join(''):'<p class="empty">No documents in this project yet.</p>'}`:`<h1 class="h1">Files</h1><p class="sub">Your projects and their reports</p><div class="grid fgrid">${names.map(n=>`<button class="tile ftile" data-fo="${e(n)}"><span class="fi">${IC.fd}</span><b>${e(n)}</b><span>${cnt(n)} document${cnt(n)==1?'':'s'}</span></button>`).join('')}<button class="tile ftile fnew" id="nf"><span class="fi plus">+</span><b>New project</b><span>Create a folder</span></button></div>`)+`</main>`+nav('files')}
  if(view==='pv')A.innerHTML=bar(`<button class="ib" id="pvb" aria-label="Back to editing">${IC.back}</button><h1 class="h1 s">Preview</h1>`)+`<main class="wrap pvw"><p class="sub">${e(pvB?pvB.name:'')} \u00b7 exactly as it will print</p><div class="pvs" id="pvs"></div></main><div class="pvbar"><button class="btn" id="pvb2">Edit</button><button class="btn" id="pvsave">Save PDF</button><button class="btn p" id="pvsend">Send</button></div>`;
  if(view==='ed')A.innerHTML=bar(`<button class="ib" id="home" aria-label="Back">${IC.back}</button><input id="ttl" value="${e(cur.title)}" aria-label="Document title">`,`<button class="btn p" id="pdf">Export PDF</button>`)+`<main class="wrap ew"><div class="ctx"><div class="cx1"><span class="sv ok" id="sv">Saved</span><span class="tp">Tap any text to edit</span></div><div class="cx2"><button class="lgbtn" id="undo" data-undo="1" disabled>Undo</button><button class="lgbtn" data-lg="open">Logos \u00b7 ${lgItems(cur).length}</button><span class="zm"><button data-z="-1" aria-label="Zoom out">\u2212</button><button data-z="1" aria-label="Zoom in">+</button></span></div></div><div class="stage" id="stage"></div></main><div class="etb" id="etb"></div>`;
- if(view==='ed')mountEditor();if(view==='pv')drawPv();if(view!==lv){lv=view;window.scrollTo(0,0)}if(view==='home')fitThumbs();zoomGate()}
+ if(view==='ed')mountEditor();if(view==='pv')drawPv();if(view!==lv){lv=view;window.scrollTo(0,0);const m=document.querySelector('main.wrap');if(m)m.scrollTop=0}else if(SC0!=null){const m=document.querySelector('main.wrap');if(m)m.scrollTop=SC0}SC0=null;if(view==='home')fitThumbs();zoomGate()}
 document.addEventListener('input',ev=>{if(ev.target.id==='q')applyF()});
 document.addEventListener('click',ev=>{const m=ev.target.closest('#dmore');if(!m)return;const r=$('#rail');if(r){r.dataset.all='1';r.dataset.keep='1';applyF()}m.remove()});
 document.addEventListener('click',ev=>{if(view!=='home')return;const c=ev.target.closest('[data-hf],[data-qa],[data-pin]');if(!c)return;
@@ -394,6 +483,7 @@ document.addEventListener('click',ev=>{if(view!=='home')return;const c=ev.target
  const k=c.dataset.qa;
  if(k==='files'){fld=null;view='files';render()}
  else if(k==='bk')exportBk();
+ else if(k==='pdf'){view='pdfed';render()}
  else if(k==='us'){hf='us';document.querySelectorAll('.chip').forEach(x=>{const on=x.dataset.hf===hf;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});applyF();const r=$('#recent');if(r)r.scrollIntoView({behavior:'smooth',block:'start'})}
  else if(k==='rep'||k==='form'){const g=$('#ngrid'),h=$('#newdoc');if(!g)return;g.dataset.hl=k;if(h)h.scrollIntoView({behavior:'smooth',block:'start'});clearTimeout(g._t);g._t=setTimeout(()=>delete g.dataset.hl,3200)}});
 document.addEventListener('click',ev=>{const t=ev.target.closest('button,.row,.brand,.rcard,.cont');if(!t)return;const go=v=>{view=v;render()};
@@ -465,13 +555,14 @@ render();
    If the fingerprint on the server differs from the one this page started with, it clears the offline
    cache and reloads, so the phone can never keep running an old copy or a mix of old and new files.
    version.json is only the label shown in Settings. Nothing in app.js or sw.js is bumped by hand. */
-const CODE=['index.html','app.css','fonts.css','app.js','logo.js','pdf.js','publicsans-pdf.js','manifest.webmanifest'];
-let VER='',FP0='',upd=false,swr=null,lastChk=0;
-const busy=()=>view==='ed'||view==='pv',
+const CODE=['index.html','app.css','fonts.css','app.js','pdfedit.js','logo.js','pdf.js','publicsans-pdf.js','manifest.webmanifest'];
+var VER='',FP0='',upd=false,swr=null,lastChk=0;
+const busy=()=>view==='ed'||view==='pv'||view==='pdfed',
  hashStr=t=>{let h=2166136261;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)},
+ paintVer=()=>{const a=document.getElementById('verl'),b=document.getElementById('bldl');if(a)a.textContent=VER||'\u2013';if(b)b.textContent='build '+(FP0||'\u2013')},
  verText=()=>'Version '+(VER||'\u2013')+(FP0?' \u00b7 build '+FP0:'');
 async function fingerprint(){const parts=await Promise.all(CODE.map(u=>fetch(u,{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()})));return hashStr(parts.join('\u0001'))}
-async function loadVer(){try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(r.ok){const j=await r.json();VER=String(j.v||'')}}catch{}const el=document.getElementById('verl');if(el)el.textContent=verText()}
+async function loadVer(){try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(r.ok){const j=await r.json();VER=String(j.v||'')}}catch{}paintVer()}
 async function chkUpd(force){if(!FP0||(!force&&Date.now()-lastChk<30e3))return upd;lastChk=Date.now();
  try{const f=await fingerprint();if(f!==FP0){upd=true;applyUpd()}return upd}catch{return null}}
 async function doReload(manual){
@@ -482,7 +573,7 @@ async function doReload(manual){
 function applyUpd(){if(!upd)return;
  if(busy()){if(!applyUpd.n){applyUpd.n=1;toast('A new version is ready',()=>doReload(true),'Refresh now')}return}
  doReload()}
-fingerprint().then(f=>{FP0=f;const el=document.getElementById('verl');if(el)el.textContent=verText()}).catch(()=>{});loadVer();
+fingerprint().then(f=>{FP0=f;paintVer()}).catch(()=>{});loadVer();
 if('serviceWorker'in navigator){
  let had=!!navigator.serviceWorker.controller;
  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swr=r;r.update().catch(()=>{})}).catch(()=>{});
@@ -527,16 +618,19 @@ async function doSend(kind){const num=($('#sn').value||'').replace(/\D/g,''),em=
 
 /* ---- v28: settings helpers, clickable continue card, system theme ---- */
 document.addEventListener('keydown',ev=>{const c=ev.target.closest&&ev.target.closest('.cont[role=button]');if(c&&ev.target===c&&(ev.key==='Enter'||ev.key===' ')){ev.preventDefault();c.click()}});
-async function checkNow(b){const lab=b.textContent;b.disabled=true;b.textContent='Checking\u2026';
- try{const r=await chkUpd(true);if(r===null)toast('Could not check. Are you online?');
-  else if(r){toast('Updating\u2026');setTimeout(()=>doReload(true),400)}
-  else toast('You have the latest version'+(VER?' (v'+VER+')':''))}
- finally{b.disabled=false;b.textContent=lab}}
+async function checkNow(b){const lab=b.innerHTML,st=document.getElementById('updst'),nt=document.getElementById('updnote'),set=(c,t,n)=>{if(st){st.className='vst '+c;st.querySelector('em').textContent=t}if(nt&&n)nt.textContent=n};
+ b.disabled=true;b.querySelector('span').textContent='Checking\u2026';set('chk','Checking\u2026');
+ try{const r=await chkUpd(true);
+  if(r===null){set('off','Offline','Could not check. Connect to the internet and try again.');toast('Could not check. Are you online?')}
+  else if(r){set('rdy','Update found','Installing the new version\u2026');toast('Updating\u2026');setTimeout(()=>doReload(true),400)}
+  else{set('ok','Up to date','Checked just now. You have the latest version.')}}
+ finally{b.disabled=false;b.innerHTML=lab}}
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(theme==='auto'){applyTheme()}})}catch{}
 
 /* ---- v32: automatic backup (email relay on open, reminder banner, synced folder) ---- */
 const relayMsg=r=>r==='ok'?'Backup emailed to '+ME.m:r==='noem'?'Add your email under Your details first':r==='unk'?'Not confirmed. Will try again next time you open the app':String(r).startsWith('err:')?String(r).slice(4):'Could not send. Check your connection and try again';
-async function sendRelay(test){
+async function sendRelay(test){const r=await sendRelay0(test);SV('dw.relaylast',{t:Date.now(),r:r==='ok'?'ok':relayMsg(r)});return r}
+async function sendRelay0(test){
  if(!ME.m)return'noem';
  const body=JSON.stringify({key:RELAY_KEY,email:String(ME.m).trim(),name:bkName(),test:!!test,count:docs.length,backup:bkJSON()});
  try{const r=await fetch(RELAY_URL,{method:'POST',body,redirect:'follow'});const j=await r.json().catch(()=>null);if(j&&j.ok)return'ok';if(j&&j.error)return'err:'+j.error;return'unk'}
@@ -549,6 +643,7 @@ async function folderBk(ask){try{const h=await idbGet('dir');if(!h)return false;
 let abBusy=false;
 async function autoBk(){if(abBusy||!docs.length)return;abBusy=true;
  try{const due=k=>Date.now()-LS(k,0)>23*36e5;
+  if(due('dw.lastsnap')){await snapTake('Automatic');if(view==='cfg'&&!meEdit)render()}
   if(AU.on&&ME.m&&navigator.onLine&&due('dw.lastrelay')){const r=await sendRelay(false);if(r==='ok'){SV('dw.lastrelay',Date.now());SV('dw.lastbk',Date.now())}toast(relayMsg(r))}
   if(window.showDirectoryPicker&&due('dw.lastfold')){if(await folderBk(false))toast('Backup saved to your folder')}
  }catch{}finally{abBusy=false}}
@@ -556,6 +651,17 @@ document.addEventListener('input',ev=>{const k=ev.target.dataset&&ev.target.data
 document.addEventListener('change',ev=>{const k=ev.target.dataset&&ev.target.dataset.au;if(!k||ev.target.type!=='checkbox')return;AU[k]=ev.target.checked;SV('dw.auto',AU);if(k==='on'&&AU.on){if(!ME.m){AU.on=false;SV('dw.auto',AU);toast('Add your email under Your details first')}else autoBk()}if(view==='cfg')render()});
 document.addEventListener('click',async ev=>{const t=ev.target.closest('#bkn,#aut,#afd');if(!t)return;
  if(t.id==='bkn'){exportBk();return}
- if(t.id==='aut'){const lab=t.textContent;t.disabled=true;t.textContent='Sending\u2026';const r=await sendRelay(true);t.disabled=false;t.textContent=lab;toast(relayMsg(r));return}
+ if(t.id==='aut'){const lab=t.textContent;t.disabled=true;t.textContent='Sending\u2026';const r=await sendRelay(true);t.disabled=false;t.textContent=lab;toast(relayMsg(r));if(view==='cfg')render();return}
  if(t.id==='afd'){try{const h=await showDirectoryPicker({mode:'readwrite'});await idbSet('dir',h);SV('dw.afname',h.name);SV('dw.lastfold',0);render();if(await folderBk(true))toast('Saved a copy to '+h.name)}catch(err){if(err&&err.name!=='AbortError')toast('Could not use that folder')}}});
 setTimeout(autoBk,3000);addEventListener('online',autoBk);addEventListener('focus',()=>setTimeout(autoBk,1500));setInterval(autoBk,60*60e3);
+
+/* ---- v58: extras ---- */
+document.addEventListener('click',ev=>{
+ const g=ev.target.closest('[data-go]');if(g){go('set');if(g.dataset.go==='msg')setTimeout(()=>{const m=document.querySelector('.mph');if(m){const h=m.previousElementSibling&&m.previousElementSibling.previousElementSibling;(h||m).scrollIntoView({block:'start'})}},80);return}
+ const sn=ev.target.closest('[data-snap]');if(sn){snapRestore(+sn.dataset.snap);return}
+ if(ev.target.closest('#rst')){resetAll();return}
+ if(ev.target.closest('.seg button'))try{navigator.vibrate&&navigator.vibrate(8)}catch{}});
+document.addEventListener('change',ev=>{if(ev.target.closest&&ev.target.closest('.tgl'))try{navigator.vibrate&&navigator.vibrate(8)}catch{}});
+const offl=()=>document.documentElement.classList.toggle('offl',!navigator.onLine);offl();addEventListener('online',offl);addEventListener('offline',offl);
+snapList().then(l=>{SNAPS=l.map(({at,why,n})=>({at,why,n}));if(view==='cfg'&&!meEdit)render()}).catch(()=>{});
+try{if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(p=>p||navigator.storage.persist()).then(p=>{PERSIST=!!p;const el=document.getElementById('persl');if(el){el.textContent=PERSIST?'Protected: the browser will not clear this data to free up space.':'Not protected: the browser may clear this data if the phone runs low on space. Keep a recent backup.';el.classList.toggle('warn',!PERSIST)}}).catch(()=>{})}}catch{}

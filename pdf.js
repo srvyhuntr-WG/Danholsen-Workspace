@@ -83,7 +83,7 @@ async function build(doc,ctx){
  const logoList=()=>imgs.map((im,i)=>im?{im,s:Math.max(.3,(lsz[i]||100)/100)}:null).filter(Boolean);
  const img=(o,x,y,w,h)=>pdf.addImage(o.im.d,'JPEG',x,y,w,h,undefined,'FAST');
  /* imported signature (transparent PNG) placed in the value area of a Signature field */
- const sig=(k,x,y,w,h)=>{const g=sgi[k];if(!g)return;const a=al(k,REP?'center':'left');let hh=Math.min(h*g.s/100,h*1.25),ww=g.w*hh/g.h;if(ww>w){ww=w;hh=g.h*ww/g.w}
+ const sig=(k,x,y,w,h)=>{const g=sgi[k];if(!g)return;const a=al(k,REP?'center':'left');let hh=h*g.s/100,ww=g.w*hh/g.h;   /* same size as the editor: the slider is no longer capped at 125% in the PDF */if(ww>w){ww=w;hh=g.h*ww/g.w}
   const xx=a==='right'?x+w-ww:a==='center'?x+(w-ww)/2:x,yy=y+(h-hh)/2;
   try{pdf.addImage(g.d,'PNG',xx,yy,ww,hh,undefined,'FAST')}catch(err){console.warn('signature skipped',err)}};
  const seqLogos=(x,y,maxW,h,gap=12)=>{const L=logoList();if(!L.length)return;
