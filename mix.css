@@ -47,7 +47,7 @@ html[data-t] .cont .btn.p{background:#16130E;color:var(--ac);box-shadow:none;bor
 [data-t=dark] .nav button.on{color:var(--ac);background:#FFB81C1F}
 
 /* settings */
-.stk{display:flex;flex-direction:column;gap:14px;max-width:640px}
+.stk{display:flex;flex-direction:column;gap:14px;max-width:640px;margin:0 auto;width:100%}
 .stk .pane{margin:0}
 .stk .pane .sfl{margin:0 0 12px}
 .stk .pane h3{margin-bottom:8px}
