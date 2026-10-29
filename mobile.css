@@ -20,7 +20,7 @@ body:has(.etb.show) .wrap.ew{padding-bottom:340px}
  .wrap{padding:22px 16px 130px}
  .rail{margin:0 -16px;padding:4px 16px 18px;scroll-padding:0 16px}
  .cont{padding:16px 16px 16px 18px;gap:16px}
- .ctx{flex-wrap:wrap;row-gap:6px}.tp{flex:1 1 100%}
+ .ctx{flex-wrap:wrap;row-gap:8px}.cx1{flex:1 1 100%}.cx2{margin-left:0;width:100%;justify-content:space-between}
  .h1{font-size:34px}
 }
 .ci{min-width:0}.ci h2{overflow-wrap:anywhere}

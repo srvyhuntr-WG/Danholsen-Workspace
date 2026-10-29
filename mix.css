@@ -55,3 +55,63 @@ html[data-t] .cont .btn.p{background:#16130E;color:var(--ac);box-shadow:none;bor
 .seg button{flex:1;min-height:46px;border:0;background:transparent;border-radius:12px;font:600 14px var(--font);color:var(--mu)}
 .seg button.on{background:var(--sf);color:var(--tx);box-shadow:var(--sh)}
 .stk .bkc{margin-top:10px}
+
+/* ===== v30: premium logo pill ===== */
+.brand{gap:12px!important}
+.brand .bl,.bl{background:linear-gradient(180deg,#FFFFFF 0%,#F6F2E8 100%)!important;border:0!important;border-radius:999px!important;padding:8px 20px!important;
+ box-shadow:0 0 0 1px rgba(242,169,0,.55),0 0 0 5px rgba(242,169,0,.10),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(22,19,14,.07),0 12px 26px -12px rgba(22,19,14,.5)!important;
+ transition:box-shadow .25s,transform .2s}
+.brand:hover .bl{box-shadow:0 0 0 1px rgba(242,169,0,.8),0 0 0 6px rgba(242,169,0,.16),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(22,19,14,.07),0 14px 30px -12px rgba(22,19,14,.55)!important}
+.brand:active .bl{transform:scale(.98)}
+.brand .bl img,.bl img{height:30px!important;filter:contrast(1.08) saturate(1.05)}
+.wm{font:700 10.5px/1 var(--font)!important;letter-spacing:.22em;text-transform:uppercase!important;color:var(--mu)}
+.wm::before{width:5px!important;height:5px!important;border-radius:50%;background:var(--ac)!important;margin:0 10px 0 0!important}
+@media(max-width:600px){.brand .bl,.bl{padding:7px 16px!important}.brand .bl img,.bl img{height:26px!important}}
+@media(max-width:380px){.wm{display:none}}
+
+/* ===== v31: Files, Send sheet and editor header, as in the mockups ===== */
+/* Files: amber folder tab cards, dashed "New project" card */
+.fgrid{gap:12px}
+.ftile{min-height:124px;padding:16px;border-radius:var(--rc);gap:4px}
+.ftile .fi:not(.plus){width:30px;height:22px;border-radius:5px 6px 6px 6px;background:var(--ac);position:relative;margin:6px 0 10px}
+.ftile .fi:not(.plus)::before{content:'';position:absolute;left:0;top:-5px;width:14px;height:7px;border-radius:5px 5px 0 0;background:var(--ac)}
+.ftile .fi:not(.plus) svg{display:none}
+.ftile b{font-size:15px;line-height:1.25}
+.ftile.fnew{align-items:center;justify-content:center;text-align:center;gap:2px;background:transparent}
+.ftile .fi.plus{margin:0;color:var(--mu)}
+.frow{border-radius:var(--rc);padding:12px}
+.frow .fic{border-radius:14px;background:color-mix(in srgb,var(--ac) 22%,transparent)}
+.fact .lgbtn{min-height:40px;padding:0 16px}
+
+/* Send sheet: file chip, segmented tabs, solid send buttons */
+.snb{border-radius:26px 26px 0 0;gap:14px;padding:12px 18px calc(22px + env(safe-area-inset-bottom))}
+.sfi{width:46px;height:46px;border-radius:var(--rb);background:var(--ac);color:#16130E;font-weight:800}
+.sfile b{font-size:15px}
+.stabs{border-radius:var(--rb);padding:4px}
+.stabs button{border-radius:12px;min-height:44px}
+.stabs button.on{background:var(--sf);color:var(--tx);box-shadow:var(--sh)}
+.sfl{font-size:12.5px;font-weight:700;color:var(--tx)}
+.sfl input,.sfl textarea{border-radius:14px;background:var(--bg)}
+.sbt{min-height:54px;border-radius:var(--rb);font-size:15px;font-weight:700;border:0}
+.sbt.wa,[data-t=dark] .sbt.wa{background:#1FA855;color:#fff;border:0}
+.sbt.em,[data-t=dark] .sbt.em{background:var(--tx);color:var(--bg);border:0}
+.snb>.btn{min-height:48px}
+
+/* Editor header: status on the left, tools on the right */
+.ctx{margin:4px 2px 8px;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.cx1{display:flex;align-items:center;gap:8px;flex:1 1 220px;min-width:0}
+.cx2{display:flex;align-items:center;gap:8px;flex:none}
+.cx1 .tp{font-weight:500;color:var(--mu);font-size:12.5px}
+.sv{flex:none;background:transparent;border:0;color:var(--tx)}
+.lgbtn{min-height:40px;border-radius:var(--rb)}
+.zm{border-radius:var(--rb)}.zm button{height:40px}
+
+/* ===== v32: automatic backup ===== */
+.tgl{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;margin:0;border-bottom:1px solid var(--ln)}
+.tgl b{font-weight:700;font-size:14.5px}.tgl small{display:block;color:var(--mu);font-size:12.5px;font-weight:400;margin-top:2px}
+.tgl input{flex:none;width:26px;height:26px;min-height:0;accent-color:#F2A900}
+.stk .pane .sfl small{display:block;font-weight:400;color:var(--mu)}
+.stk .pane>.btn{margin:0 0 12px}
+.bkbn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;margin:0 0 14px;padding:14px 16px;border-radius:var(--rc);border:1px solid color-mix(in srgb,var(--ac) 55%,var(--ln));background:color-mix(in srgb,var(--ac) 14%,var(--sf));color:var(--tx)}
+.bkbn span{flex:1;min-width:0}.bkbn b{display:block;font-size:14.5px}.bkbn small{display:block;color:var(--mu);font-size:12.5px;margin-top:2px}
+.bkbn i{font-style:normal;flex:none;background:var(--ac);color:#16130E;font-weight:700;font-size:13px;padding:10px 14px;border-radius:var(--rb)}
