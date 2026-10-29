@@ -85,3 +85,23 @@ body:has(.etb.show) .wrap.ew{padding-bottom:340px}
 .mea2{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
 .mea2 .btn,.mei .btn{display:inline-flex;align-items:center;gap:8px}
 @media(max-width:600px){.top{padding-top:calc(8px + env(safe-area-inset-top))!important}}
+
+/* Zoom lock: only documents/reports (html.zk) may be pinch-zoomed; all other pages stay at 1x */
+html:not(.zk),html:not(.zk) body{touch-action:pan-x pan-y}
+
+/* v48: home quick actions, attention strip, filter chips, pinned documents */
+.qa{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 14px}
+.qb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:76px;padding:10px 4px;border-radius:var(--rc,14px);border:1px solid var(--ln);background:var(--sf);color:var(--tx);font:600 12px/1.15 var(--font);text-align:center;min-width:0}
+.qb svg{flex:none;display:block}.qb:active{transform:scale(.97)}
+.bkbn.att{margin-top:0}
+.chips{display:flex;gap:8px;overflow-x:auto;margin:12px 0 0;padding:2px 0 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:36px;padding:0 15px;border-radius:999px;border:1px solid var(--ln);background:var(--sf);color:var(--tx);font:600 13px/1 var(--font);white-space:nowrap}
+.chip small{margin-left:7px;opacity:.65;font-weight:700}
+.chip.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.rcard .px{position:absolute;top:14px;left:14px;width:32px!important;height:32px!important;border-radius:50%;background:color-mix(in srgb,var(--sf) 88%,transparent);border:1px solid var(--ln);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:2}
+.rcard .px.on{color:var(--ac)}.rcard .px.on svg{fill:currentColor}
+.rcard .rx{z-index:2}
+#ngrid[data-hl=rep] .tile[data-kind=form],#ngrid[data-hl=form] .tile[data-kind=rep]{opacity:.35;transition:opacity .2s}
+#ngrid[data-hl] .tile:not([style*=opacity]){transition:opacity .2s,box-shadow .2s}
+#ngrid[data-hl=rep] .tile[data-kind=rep],#ngrid[data-hl=form] .tile[data-kind=form]{box-shadow:0 0 0 2px var(--ac)}
+@media(max-width:380px){.qb{font-size:11px;min-height:70px}}
