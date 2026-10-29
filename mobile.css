@@ -105,3 +105,12 @@ html:not(.zk),html:not(.zk) body{touch-action:pan-x pan-y}
 #ngrid[data-hl] .tile:not([style*=opacity]){transition:opacity .2s,box-shadow .2s}
 #ngrid[data-hl=rep] .tile[data-kind=rep],#ngrid[data-hl=form] .tile[data-kind=form]{box-shadow:0 0 0 2px var(--ac)}
 @media(max-width:380px){.qb{font-size:11px;min-height:70px}}
+
+/* v51: compact, grouped template tiles (Forms / Reports / Timesheets) */
+#ngrid .grp{font:700 13px/1 var(--font);letter-spacing:.02em;color:var(--tx);margin:18px 0 10px}
+#ngrid .grp:first-child{margin-top:0}
+#ngrid .grid.ngr{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#ngrid .tile{padding:5px 5px 8px;gap:0;border-radius:10px;min-height:0}
+#ngrid .tile .tmn{border-radius:6px}
+#ngrid .tile>b{margin-top:6px;padding:0 2px;font:600 10.5px/1.25 var(--font);letter-spacing:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+@media(min-width:640px){#ngrid .grid.ngr{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}#ngrid .tile>b{font-size:11.5px}}
