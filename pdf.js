@@ -125,7 +125,7 @@ async function build(doc,ctx){
    let lx=ex?ex+18:L0,r=fitZ(R0-lx),ty=56,sy=71,ly=84;
    if(!r.ok){lx=L0;r=fitZ(W);ty=ex?90:56;sy=ty+15;ly=sy+13}
    {text(tt,a==='left'?lx:a==='center'?(lx+R0)/2:R0,ty,r.z,b,a)}
-   text(['Week '+V('wk'),V('from')&&V('to')?(V('from')+' to '+V('to')):''].filter(Boolean).join('   |   '),R0,sy,8.5,false,'right',[90,90,90]);
+   text([V('wk')?'Week '+V('wk'):'',V('from')&&V('to')?(V('from')+' to '+V('to')):''].filter(Boolean).join('   |   '),R0,sy,8.5,false,'right',[90,90,90]);
    line(L0,ly,R0,ly,LWT.rule,K.amber);y=ly+14}
   else{ /* report header: [logos] | title | [logos] - sized to however many logos THIS document carries.
            1 logo = [logo | title]; 2 = [logo | title | logo]; 3+ = logos split across both sides of the title. */
@@ -141,7 +141,7 @@ async function build(doc,ctx){
    y=yy+h2+10}
  };
  const footer=()=>{
-  if(doc.t==='tsh'){line(L0,766,R0,766,LWT.hair,K.hr);text('Danholsen Global Services Limited   |   Weekly Timesheet   |   '+V('client'),L0,778,8,false,'left',[90,90,90]);return}
+  if(doc.t==='tsh'){line(L0,766,R0,766,LWT.hair,K.hr);text(['Danholsen Global Services Limited','Weekly Timesheet',V('client')].filter(Boolean).join('   |   '),L0,778,8,false,'left',[90,90,90]);return}
   if(doc.t!=='jcf')return;
   line(36,747.9,576,747.9,LWT.thin);const m=String(T.no).match(/^(.*?)\s*(Rev:.*)$/);
   text(m?m[1]:T.no,36,760,8.5,false);if(m)text(m[2],576,760,8.5,false,'right')};
