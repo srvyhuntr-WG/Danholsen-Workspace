@@ -978,3 +978,74 @@ body:has(#pe) .wrap{padding-bottom:40px}
 /* v60: light mode - app background slightly dimmer than the white cards and panels */
 :root[data-t=light]{--bg:#EDEFF2}
 :root[data-t=light] .nav{background:color-mix(in srgb,var(--sf) 94%,transparent)}
+
+/* v60: Edit PDF extras */
+.pe-note{position:absolute;left:12px;right:12px;top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,#000 72%,transparent);color:#fff;font:500 12.5px/1.4 var(--font);text-align:center;pointer-events:none;z-index:3}
+.pe-opt{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--ln);border-radius:14px;background:var(--sf);cursor:pointer;text-align:left}
+.pe-opt input{flex:none;width:20px;height:20px;margin-top:2px;accent-color:var(--ac)}
+.pe-opt b{display:block;font-size:13.5px}.pe-opt small{display:block;color:var(--mu);font-size:12px;margin-top:2px;line-height:1.4}
+
+/* v60: transparent previews and logo delete buttons */
+.sgpv{background-color:#fff;background-image:linear-gradient(45deg,#e9ebee 25%,transparent 25%,transparent 75%,#e9ebee 75%),linear-gradient(45deg,#e9ebee 25%,transparent 25%,transparent 75%,#e9ebee 75%);background-size:14px 14px;background-position:0 0,7px 7px}
+.lgw{position:relative;width:84px;height:58px}.lgw .lgc{width:100%;height:100%}
+.lgw .libx,.libx{width:26px;height:26px;display:grid;place-items:center;top:-6px;right:-6px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.libc .libx{top:4px;right:4px}
+
+/* v61: Edit PDF and editor chrome - lighter, tucks away, nothing blurred over the pages */
+.top{transition:transform .24s cubic-bezier(.2,.8,.2,1);will-change:transform}
+.top.hide{transform:translateY(-101%)}
+body:has(#pe) .top,body:has(.etb) .top{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:var(--bg)!important}
+/* Edit PDF: one slim header row (Back + title); the brand row is dropped on this screen */
+body:has(#pe) .top{padding-top:calc(6px + env(safe-area-inset-top))!important;padding-bottom:6px!important;gap:0!important}
+body:has(#pe) .top .tr1{display:none}
+body:has(#pe) .wrap{padding-top:12px;padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+.pe-name{margin:0 0 8px;gap:8px}.pe-name .lgbtn{flex:none;min-height:34px}.pe-name .lgbtn.on{color:var(--ac);border-color:var(--ac)}
+.pe-opt{margin-bottom:10px;padding:8px 12px}
+.pe-pages{gap:12px;padding-bottom:24px}
+/* pages: drawn into place, faded in, isolated so scrolling never re-lays out the page */
+.pe-pg{contain:layout paint style;transform:translateZ(0)}
+.pe-cv{opacity:0;transition:opacity .16s ease-out}.pe-cv.rd{opacity:1}
+/* floating tool dock */
+.pe-dock{position:fixed;z-index:25;left:8px;right:8px;margin:0 auto;width:max-content;max-width:calc(100% - 16px);bottom:calc(10px + env(safe-area-inset-bottom));transform:translateY(calc(var(--kb,0px) * -1));display:flex;align-items:center;gap:2px;padding:5px;border-radius:999px;background:var(--sf);border:1px solid var(--ln);box-shadow:0 10px 30px -10px rgba(0,0,0,.5);overflow-x:auto;scrollbar-width:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.pe-dock::-webkit-scrollbar{display:none}
+.pe-dock .pd-g{display:contents}
+.pe-dock .pd-fmt{display:none}.pe-dock.fmt .pd-fmt{display:contents}.pe-dock.fmt .pd-idle{display:none}
+.pe-dock .pe-t{flex:none!important;min-width:42px;height:42px;padding:0 11px;border:0;border-radius:999px;background:transparent;font-size:14px}
+.pe-dock .pe-t.on{background:color-mix(in srgb,var(--ac) 26%,transparent)}
+.pe-dock .pe-t.p{background:var(--ac);color:#1B1300;padding:0 16px}
+.pe-dock .pe-t:disabled{opacity:.35}
+.pe-dock .sep{flex:none;width:1px;height:22px;margin:0 3px;background:var(--ln)}
+@media(max-width:360px){.pe-dock .pe-t[data-pe=add] span{display:none}}
+/* bottom edit sheet: a compact floating card instead of a full-width sheet */
+.etb{bottom:calc(8px + env(safe-area-inset-bottom))!important;border:1px solid var(--ln)!important;border-radius:20px!important;padding:10px 12px!important;transform:translate(var(--vx,0px),calc(var(--vy,0px) + 150%)) scale(var(--vs,1))!important;box-shadow:0 12px 34px -12px rgba(0,0,0,.55)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.etb.show{transform:translate(var(--vx,0px),var(--vy,0px)) scale(var(--vs,1))!important}
+@media(max-width:899px){.etb.cl{padding:8px 10px!important}}
+@media(prefers-reduced-motion:reduce){.top,.pe-cv{transition:none}}
+
+/* v62: Bento Charcoal - Danholsen logo colours (charcoal #1B1B1B, amber #F2A900), dark theme; Bento Pro as the light theme */
+:root[data-t=light]{--bg:#F5F4F0;--sf:#fff;--sf2:#ECEAE3;--tx:#1B1B1B;--mu:#5C5C57;--ln:#DAD7CD;--ac:#F2A900;--bl:#1B1B1B;--desk:#E7E5DE;--rc:24px;--rb:16px;--sh:0 10px 28px -18px rgba(27,27,27,.28)}
+:root[data-t=dark]{--bg:#141414;--sf:#222221;--sf2:#2E2E2B;--tx:#F4F2EC;--mu:#A8A59C;--ln:#34332F;--ac:#F2A900;--bl:#F2A900;--desk:#0C0C0C;--rc:24px;--rb:16px;--sh:0 14px 30px -18px #000}
+html[data-t] .top{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom:0}
+html[data-t] .h1{font:700 42px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.02em}
+html[data-t] .shd .sec,html[data-t] .sec{font:700 24px/1.1 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em;color:var(--tx)}
+html[data-t] .search{height:52px;border-radius:16px;border:1px solid var(--ln);box-shadow:none;background:var(--sf)}
+html[data-t] .search:focus{outline:2px solid var(--ac);border-color:var(--ac)}
+/* Home quick actions as bento tiles: one wide amber tile, then a two-column grid */
+html[data-t] .qa{grid-template-columns:1fr 1fr!important;gap:10px!important}
+html[data-t] .qb{flex-direction:row;justify-content:flex-start;gap:12px;min-height:64px;padding:0 16px;border-radius:20px;text-align:left;font-weight:700;font-size:14px;box-shadow:none}
+html[data-t] .qb svg{color:#B57F00}html[data-t][data-t=dark] .qb svg{color:var(--ac)}
+html[data-t] .qb:first-child{grid-column:span 2;min-height:76px;background:var(--ac);border-color:var(--ac);color:#1B1B1B;font:700 24px 'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.03em}
+html[data-t] .qb:first-child span{font-size:26px;line-height:1}
+html[data-t] .qb:first-child svg{color:#1B1B1B;width:28px;height:28px}
+html[data-t] .cont{border-radius:var(--rc)}
+html[data-t] .dlist{border-radius:var(--rc)}
+html[data-t] .btn.p{background:var(--ac);color:#1B1B1B}
+html[data-t] .etb{background:var(--sf)}
+/* bottom bar: a floating charcoal pill with an amber active tab */
+html[data-t] .nav button{color:#A8A59C}
+html[data-t] .nav button.on{background:#F2A900;color:#1B1B1B;font-weight:700}
+@media(max-width:899px){
+ html[data-t] .nav{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;width:auto!important;max-width:none!important;margin:2px 16px calc(12px + env(safe-area-inset-bottom))!important;border:1px solid transparent!important;border-radius:99px!important;padding:6px!important;gap:4px;background:#1B1B1B!important;box-shadow:0 14px 34px -12px rgba(0,0,0,.55)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+ html[data-t=dark] .nav{background:#222221!important;border-color:var(--ln)!important}
+ html[data-t] .nav button{flex:1;width:auto;height:52px;border-radius:99px!important}
+}
