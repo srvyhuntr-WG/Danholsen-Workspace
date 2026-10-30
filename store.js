@@ -35,6 +35,12 @@ var S=window.DWSTORE={
   bytes:function(){var n=0;Object.keys(mem).forEach(function(k){n+=(k.length+String(mem[k]).length)*2});return n},
   quota:function(){return navigator.storage&&navigator.storage.estimate?navigator.storage.estimate().then(function(e){return e&&e.quota?e.quota:null}).catch(function(){return null}):Promise.resolve(null)},
   wipe:function(){mem={}},
+  /* Saved PDF copies: ArrayBuffers under 'pdf:<id>' in the same database (never mixed with the 'ls:' keys). */
+  pdf:{
+    put:function(id,buf){return getDb().then(function(d){return new Promise(function(res,rej){var t=d.transaction('k','readwrite');t.objectStore('k').put(buf,'pdf:'+id);t.oncomplete=function(){res()};t.onerror=t.onabort=function(){rej(t.error||new Error('write failed'))}})})},
+    get:function(id){return getDb().then(function(d){return new Promise(function(res,rej){var r=d.transaction('k').objectStore('k').get('pdf:'+id);r.onsuccess=function(){res(r.result||null)};r.onerror=function(){rej(r.error)}})}).catch(function(){return null})},
+    del:function(id){return getDb().then(function(d){return new Promise(function(res){var t=d.transaction('k','readwrite');t.objectStore('k').delete('pdf:'+id);t.oncomplete=t.onerror=t.onabort=function(){res()}})}).catch(function(){})}
+  },
   ready:null
 };
 S.ready=hydrate();

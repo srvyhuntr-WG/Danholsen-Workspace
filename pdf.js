@@ -86,12 +86,12 @@ async function build(doc,ctx){
  const sig=(k,x,y,w,h)=>{const g=sgi[k];if(!g)return;const a=al(k,REP?'center':'left');let hh=h*g.s/100,ww=g.w*hh/g.h;   /* same size as the editor: the slider is no longer capped at 125% in the PDF */if(ww>w){ww=w;hh=g.h*ww/g.w}
   const xx=a==='right'?x+w-ww:a==='center'?x+(w-ww)/2:x,yy=y+(h-hh)/2;
   try{pdf.addImage(g.d,'PNG',xx,yy,ww,hh,undefined,'FAST')}catch(err){console.warn('signature skipped',err)}};
- const seqLogos=(x,y,maxW,h,gap=12)=>{const L=logoList();if(!L.length)return;
-  const S=L.map(o=>{const hh=h*o.s;return{o,ww:o.im.w*hh/o.im.h,hh}}),tot=S.reduce((a,b)=>a+b.ww,0)+gap*(S.length-1),k=Math.min(1,maxW/tot);
-  let cx=x;S.forEach(s=>{const ww=s.ww*k,hh=s.hh*k;img(s.o,cx,y+(h-hh)/2,ww,hh);cx+=ww+gap*k});return cx-gap*k};
+ const seqMeasure=(maxW,h,gap=12)=>{const L=logoList();if(!L.length)return{S:[],k:1};const S=L.map(o=>{const hh=h*o.s;return{o,ww:o.im.w*hh/o.im.h,hh}}),tot=S.reduce((a,b)=>a+b.ww,0)+gap*(S.length-1);return{S,k:Math.min(1,maxW/tot)}};
+ const seqLogos=(x,y,maxW,h,gap=12,bh)=>{const{S,k}=seqMeasure(maxW,h,gap);if(!S.length)return;bh=bh||h;
+  let cx=x;S.forEach(s=>{const ww=s.ww*k,hh=s.hh*k;img(s.o,cx,y+(bh-hh)/2,ww,hh);cx+=ww+gap*k});return cx-gap*k};
  const cellLogos=(L,x,y,w,h,N)=>{N=N||L.length;if(!N)return;const cw=w/N;for(let i=1;i<N;i++)line(x+i*cw,y,x+i*cw,y+h,LW);
   L.forEach((o,i)=>{
-   const r=Math.min((cw-10)*o.s/o.im.w,(h-8)*o.s/o.im.h),ww=o.im.w*r,hh=o.im.h*r;img(o,x+i*cw+(cw-ww)/2,y+(h-hh)/2,ww,hh)})};
+   const r0=Math.min((cw-10)/o.im.w,33/o.im.h),r=o.s>1?Math.min(r0*o.s,(cw-10)/o.im.w):Math.min((cw-10)*o.s/o.im.w,(h-8)*o.s/o.im.h),ww=o.im.w*r,hh=o.im.h*r;img(o,x+i*cw+(cw-ww)/2,y+(h-hh)/2,ww,hh)})};
 
  /* ---- grid helpers ---- */
  const pack=s=>{const it=s.f.map(x=>Array.isArray(x)?[...x]:[x,1]),R=[];let r=[],t=0;
@@ -117,8 +117,8 @@ async function build(doc,ctx){
     if(!r.ok){r=fitZ(540);ny=ty+15}
     const xr=ny===114?576-nw-18:576;
     text(tt,a==='center'?(36+xr)/2:a==='right'?xr:36,ty,r.z,b,a);text(noT,576,ny,nz,nb,'right');y=ny===114?136:152}}
-  else if(doc.t==='trn'){const h=55;box(L0,36,270,h,{lw:LW});box(306.5,36,270,h,{lw:LW,fill:K.amber});
-   seqLogos(44,42,254,43);put((doc.title||T.n).toUpperCase(),306.5,36,270,h,{sz:vs('h:t',15),b:vb('h:t',true),al:al('h:t','center'),fg:K.white});y=36+h}
+  else if(doc.t==='trn'){const m=seqMeasure(254,43),lh=m.S.length?Math.max(...m.S.map(q=>q.hh*m.k)):0,h=Math.max(55,lh+12);box(L0,36,270,h,{lw:LW});box(306.5,36,270,h,{lw:LW,fill:K.amber});
+   seqLogos(44,36,254,43,12,h);put((doc.title||T.n).toUpperCase(),306.5,36,270,h,{sz:vs('h:t',15),b:vb('h:t',true),al:al('h:t','center'),fg:K.white});y=36+h}
   else if(doc.t==='tsh'){const ex=seqLogos(36,36,260,34),tt=(doc.title||T.n).toUpperCase(),a=al('h:t','right'),b=vb('h:t',true),z0=vs('h:t',17);
    /* title sits beside the logo when it fits; otherwise it drops to its own line so it can never run into the logo */
    const fitZ=(wid)=>{let z=z0;const tw=()=>{font(z,b);return pdf.getTextWidth(clean(tt))};while(z>11&&tw()>wid)z-=.5;return{z,ok:tw()<=wid}};
@@ -129,8 +129,8 @@ async function build(doc,ctx){
    line(L0,ly,R0,ly,LWT.rule,K.amber);y=ly+14}
   else{ /* report header: [logos] | title | [logos] - sized to however many logos THIS document carries.
            1 logo = [logo | title]; 2 = [logo | title | logo]; 3+ = logos split across both sides of the title. */
-   const y0=31.3,h1=41,h2=Math.max(18,vs('h:L:date',10)*1.8,vs('h:L:no',9.5)*1.8),Ls=logoList(),n=Ls.length,nl=Math.ceil(n/2),nr=n-nl;
-   const cw=n?Math.min(W*.25,W*.78/n):0,lz=n?nl*cw:W*.5,rz=nr*cw,tw=W-nl*cw-rz,tx=L0+nl*cw;
+   let h1=41;const y0=31.3,h2=Math.max(18,vs('h:L:date',10)*1.8,vs('h:L:no',9.5)*1.8),Ls=logoList(),n=Ls.length,nl=Math.ceil(n/2),nr=n-nl;
+   const cw=n?Math.min(W*.25,W*.78/n):0;h1=Math.max(41,...Ls.map(o=>{const r0=Math.min((cw-10)/o.im.w,33/o.im.h);return Math.min(r0*o.s,(cw-10)/o.im.w)*o.im.h+8}));const lz=n?nl*cw:W*.5,rz=nr*cw,tw=W-nl*cw-rz,tx=L0+nl*cw;
    box(L0,y0,W,h1,{lw:LW});
    if(nl){cellLogos(Ls.slice(0,nl),L0,y0,nl*cw,h1,nl);line(tx,y0,tx,y0+h1,LW)}
    put((doc.title||T.n).toUpperCase(),tx,y0,tw,h1,{sz:vs('h:t',n<=2?12:10),b:vb('h:t',true),al:al('h:t','center'),fit:true,pad:4});
