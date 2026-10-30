@@ -301,9 +301,9 @@ async function build(doc,ctx){
  return pdf.output('blob');
 }
 
-async function save(blob,name){
+async function save(blob,name,direct){
  const fn=(String(name||'document').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'_')||'document')+'.pdf',f=new File([blob],fn,{type:'application/pdf'});
- if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[f]})){
+ if(!direct&&matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[f]})){
   try{await navigator.share({files:[f],title:name});return'shared'}catch(err){if(err&&err.name==='AbortError')return'cancel'}}
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),60000);return'downloaded';
