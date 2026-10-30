@@ -1305,3 +1305,22 @@ body:has(.etb.show) .wrap.ew{padding-bottom:55vh}
 .lcf b[data-h=e]{top:14px;bottom:14px;right:-9px;width:18px;cursor:ew-resize}
 .lcf b[data-h=w]{top:14px;bottom:14px;left:-9px;width:18px;cursor:ew-resize}
 .lcf i{z-index:1}
+
+/* v69: live header preview inside the logo panel, lighter backdrop, tidy thumbnails */
+.lgpv{position:relative;overflow:hidden;border:1px solid var(--ln);border-radius:12px;background:#fff;margin:0 0 12px;min-height:0;pointer-events:none}
+.lgpvo{transform-origin:0 0}
+.lgpvs.sheet{position:static!important;transform:none!important;zoom:1!important;width:794px!important;min-height:0!important;box-shadow:none!important;margin:0!important;pointer-events:none}
+.lgpvs .body{padding:0!important;min-height:0!important;height:auto!important;display:block!important}
+.lgp .lgb{background:#0003}
+.lgc{overflow:hidden}
+.lgc img{width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;min-width:0;min-height:0}
+.lgs{max-height:70vh}
+@supports(height:100dvh){.lgs{max-height:70dvh}}
+
+/* v69: top bar never hides; "PDF saved - Done" bar in Edit PDF */
+.top.hide{transform:none!important}
+.pe-done{position:fixed;z-index:40;left:8px;right:8px;margin:0 auto;max-width:560px;top:calc(66px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:18px;background:var(--sf);color:var(--tx);border:1px solid var(--ln);box-shadow:0 14px 36px -12px rgba(0,0,0,.55)}
+.pe-done .pdt{flex:1 1 auto;min-width:0}
+.pe-done .pdt b{display:block;font-size:14px}
+.pe-done .pdt small{display:block;color:var(--mu);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pe-done .btn{flex:none;white-space:nowrap}

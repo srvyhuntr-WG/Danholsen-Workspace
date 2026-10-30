@@ -248,6 +248,11 @@ async function deliver(blob,name,note){
  const f=new File([blob],name,{type:'application/pdf'});
  if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:name});return}catch(err){if(err.name==='AbortError')return}}
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Saved '+name+(note||''))}
+function showDone(name,fn){const o=$q('#pedone');if(o)o.remove();
+ const d=document.createElement('div');d.id='pedone';d.className='pe-done';d.setAttribute('role','status');
+ d.innerHTML='<div class="pdt"><b>PDF saved</b><small>'+esc(name)+'</small></div><button type="button" class="btn" data-pd="more">Keep editing</button><button type="button" class="btn p" data-pd="home">Done</button>';
+ d._go=fn||(()=>PE.discard().then(()=>dwGo('home')));document.body.appendChild(d)}
+PE.showDone=showDone;
 PE.export=async()=>{
  if(!st||PE.busy)return;deactivate();PE.busy=true;const btn=$q('[data-pe=dl]'),lab=btn&&btn.innerHTML;if(btn)btn.disabled=true;
  const prog=n=>{if(btn&&btn.querySelector('span'))btn.querySelector('span').textContent=n};
@@ -256,7 +261,7 @@ PE.export=async()=>{
   let blob=null,note='';
   if(!st.flat){try{blob=new Blob([await buildVector(prog)],{type:'application/pdf'})}catch(err){console.warn('in-place save not used:',err);blob=null;note=' (as pictures)'}}
   if(!blob)blob=await buildFlat(prog);
-  await deliver(blob,name,note);
+  await deliver(blob,name,note);showDone(name);
  }catch(err){console.error(err);toast('Could not save the PDF')}
  finally{PE.busy=false;if(btn){btn.disabled=false;btn.innerHTML=lab}}};
 
@@ -278,18 +283,14 @@ ${d?`<div class="bkc"><div><b>${esc(d.name)}</b><small>Unfinished edits saved ${
 function dockPos(){const b=$q('#pebar');if(!b)return;const v=window.visualViewport;let kb=0;if(v)kb=Math.max(0,Math.round(innerHeight-v.height-v.offsetTop));b.style.setProperty('--kb',kb+'px')}
 if(window.visualViewport){let t=0;const f=()=>{t=0;dockPos()},s2=()=>{if(!t)t=requestAnimationFrame(f)};visualViewport.addEventListener('resize',s2);visualViewport.addEventListener('scroll',s2)}
 
-/* ---- the top bar tucks away while scrolling down (Edit PDF and the document editor) and returns on scroll up ---- */
-(function(){let last=0,tick=0;
- const upd=()=>{tick=0;const t=$q('.top');if(!t)return;const y=Math.max(0,window.scrollY||0),d=y-last,h=t.classList.contains('hide'),ok=view==='pdfed'||view==='ed';
-  if(!ok||y<48){if(h)t.classList.remove('hide');last=y;return}
-  const ae=document.activeElement,foc=ae&&t.contains(ae)&&/^(INPUT|TEXTAREA)$/.test(ae.tagName);
-  if(Math.abs(d)<7)return;
-  if(d<0||foc){if(h)t.classList.remove('hide')}else if(!h)t.classList.add('hide');
-  last=y};
- addEventListener('scroll',()=>{if(!tick)tick=requestAnimationFrame(upd)},{passive:true})})();
+/* ---- the top bar stays pinned at the top while the document scrolls beneath it (v69) ---- */
+(function(){const t=$q('.top');if(t)t.classList.remove('hide')})();
 
 document.addEventListener('pointerdown',ev=>{if(ev.target.closest&&ev.target.closest('#pebar button'))ev.preventDefault()});
 document.addEventListener('click',ev=>{
+ const pd=ev.target.closest&&ev.target.closest('#pedone [data-pd]');
+ if(pd){const o=$q('#pedone');if(pd.dataset.pd==='more'){if(o)o.remove();return}
+  if(o){const g=o._go;o.remove();g()}return}
  if(view!=='pdfed')return;
  const t=ev.target.closest('[data-pe]');if(t&&st){tool(t.dataset.pe);return}
  if(ev.target.closest('#per')){PE.resume();return}
@@ -302,5 +303,5 @@ document.addEventListener('change',ev=>{if(ev.target.id==='peflat'&&st){st.flat=
 document.addEventListener('input',ev=>{if(act&&ev.target===act){if(act._add)act._A.t=act.textContent;else{const E=ed(act.dataset.id);E.t=act.textContent}save()}});
 document.addEventListener('keydown',ev=>{if(act&&ev.target===act&&ev.key==='Enter'){ev.preventDefault();deactivate()}});
 document.addEventListener('paste',ev=>{if(act&&ev.target===act){ev.preventDefault();const t=(ev.clipboardData||window.clipboardData).getData('text').replace(/\s+/g,' ');document.execCommand('insertText',false,t)}});
-PE.leave=()=>{if(act)deactivate();addMode=false;dq=[];if(io){io.disconnect();io=null}if(st)st.pages.forEach(P=>{if(P.task){try{P.task.cancel()}catch{}P.task=null}P.vis=false})};
+PE.leave=()=>{{const o=$q('#pedone');if(o)o.remove()}if(act)deactivate();addMode=false;dq=[];if(io){io.disconnect();io=null}if(st)st.pages.forEach(P=>{if(P.task){try{P.task.cancel()}catch{}P.task=null}P.vis=false})};
 })();
