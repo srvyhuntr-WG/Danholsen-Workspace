@@ -252,11 +252,11 @@ addEventListener('wheel',ev=>{if(ev.ctrlKey&&!zoomOK())ev.preventDefault()},{pas
 addEventListener('keydown',ev=>{if((ev.ctrlKey||ev.metaKey)&&['+','=','-','_','0'].includes(ev.key)&&!zoomOK())ev.preventDefault()});
 addEventListener('resize',()=>{if(view==='ed')fit();if(view==='home'||view==='newdoc')fitThumbs()});
 if(window.visualViewport){const vv=visualViewport;let q=0;
- /* keep the edit bar at its normal on-screen size and glued just under the header (top of the visible area), even while pinch-zoomed or with the keyboard open */
+ /* keep the edit bar at its normal on-screen size and glued to the very top of the screen (it only sits under the header while the header is still on screen), even while pinch-zoomed or with the keyboard open */
  const f=()=>{q=0;const b=$('#etb');if(!b)return;const s=vv.scale||1,de=document.documentElement,lw=de.clientWidth,lh=de.clientHeight;
-  b.classList.toggle('vz',Math.abs(s-1)>.01);b.style.maxWidth='none';b.style.width=Math.min(560,vv.width-16)*s+'px';
-  const th=document.querySelector('.top'),eth=(th?th.offsetHeight:56)+8;b.style.setProperty('--eth',eth+'px');b.style.setProperty('--vs',String(1/s));b.style.setProperty('--vx',(vv.offsetLeft+vv.width/2-lw/2)+'px');b.style.setProperty('--vy',(Math.abs(s-1)>.01?vv.offsetTop-eth+8:vv.offsetTop)+'px')};
- const sch=()=>{if(!q)q=requestAnimationFrame(f)};
+  b.classList.toggle('vz',Math.abs(s-1)>.01);b.style.maxWidth='none';b.style.width=Math.min(vv.width>=900?760:560,vv.width-16)*s+'px';
+  const th=document.querySelector('.top'),hb=th?Math.max(0,Math.round(th.getBoundingClientRect().bottom)):0,eth=hb?hb+6:6;b.style.setProperty('--eth',(hb?hb+6:0)+'px');b.style.setProperty('--vs',String(1/s));b.style.setProperty('--vx',(vv.offsetLeft+vv.width/2-lw/2)+'px');b.style.setProperty('--vy',(Math.abs(s-1)>.01?vv.offsetTop-eth+6:vv.offsetTop)+'px')};
+ let tq=0;const sch=()=>{if(!q)q=requestAnimationFrame(f);clearTimeout(tq);tq=setTimeout(f,140)};
  vv.addEventListener('resize',sch);vv.addEventListener('scroll',sch);addEventListener('scroll',sch,{passive:true});
  new MutationObserver(sch).observe(document.body,{childList:true,subtree:true})}
 
@@ -267,8 +267,8 @@ function cropLogo(im,done){
  const NW=im.naturalWidth||300,NH=im.naturalHeight||150;let box={x:0,y:0,w:NW,h:NH},lock=0,drag=null;
  const m=document.createElement('div');m.id='lgcrop';m.className='lgcrop';
  m.innerHTML=`<div class="lcb"></div><div class="lcs" role="dialog" aria-label="Crop logo"><div class="lgh"><b>Crop logo</b><button type="button" data-cr="x">Cancel</button></div>
- <p class="lgn">Drag the frame or its corners to keep only the logo. The preview shows how it will sit in the report header.</p>
- <div class="lcwb"><div class="lcw" id="lcw"><img id="lcim" alt="" draggable="false"><div class="lcf" id="lcf"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div></div>
+ <p class="lgn">Drag the frame, its edges or its corners to keep only the logo. The preview shows how it will sit in the report header.</p>
+ <div class="lcwb"><div class="lcw" id="lcw"><img id="lcim" alt="" draggable="false"><div class="lcf" id="lcf"><b data-h="n"></b><b data-h="s"></b><b data-h="e"></b><b data-h="w"></b><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div></div>
  <div class="lcc"><button class="lgbtn on" type="button" data-cr="free">Free</button><button class="lgbtn" type="button" data-cr="sq">Square</button><button class="lgbtn" type="button" data-cr="orig">Original shape</button><button class="lgbtn" type="button" data-cr="trim">Trim blank edges</button><button class="lgbtn" type="button" data-cr="reset">Reset</button></div>
  <h3>Preview</h3><div class="lcp"><div class="lcph"><div class="lcpl"><img id="lcpi" alt=""></div><div class="lcpt"><b>Report title</b><small>Header as it prints</small></div></div><div class="lcpo"><img id="lcpo" alt=""><small id="lcpd"></small></div></div>
  <div class="lcx"><button class="btn" type="button" data-cr="x">Cancel</button><button class="btn p" type="button" data-cr="ok">Use logo</button></div></div>`;
@@ -288,20 +288,22 @@ function cropLogo(im,done){
   for(let y=0;y<c.height;y++)for(let xx=0;xx<c.width;xx++){const i=(y*c.width+xx)*4;if(!(d[i+3]<16||(d[i]>240&&d[i+1]>240&&d[i+2]>240))){if(xx<x0)x0=xx;if(xx>x1)x1=xx;if(y<y0)y0=y;if(y>y1)y1=y}}
   if(x1<0){toast('Nothing to trim');return}const pad=Math.max(1,Math.round(2/k));lock=0;chips(0);
   box={x:x0/k-pad,y:y0/k-pad,w:(x1-x0+1)/k+2*pad,h:(y1-y0+1)/k+2*pad};clamp();show()};
- const close=()=>{removeEventListener('resize',lay);m.remove()};
+ const close=()=>{removeEventListener('resize',lay);removeEventListener('pointermove',pmv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);removeEventListener('blur',up);m.remove()};
  m.addEventListener('click',ev=>{const b=ev.target.closest('[data-cr]');if(!b)return;const a=b.dataset.cr;
   if(a==='x'){close();return}
   if(a==='ok'){const c=out();close();done(c.toDataURL('image/png'));return}
   if(a==='free')setLock(0);else if(a==='sq')setLock('sq');else if(a==='orig')setLock('orig');else if(a==='trim')trim();else if(a==='reset'){box={x:0,y:0,w:NW,h:NH};setLock(0)}});
  m.querySelector('.lcb').onclick=close;
- w.addEventListener('pointerdown',ev=>{const h=ev.target.dataset&&ev.target.dataset.h,inb=ev.target===fr;if(!h&&!inb)return;ev.preventDefault();w.setPointerCapture(ev.pointerId);drag={h:h||'mv',sx:ev.clientX,sy:ev.clientY,b:{...box}}});
- w.addEventListener('pointermove',ev=>{if(!drag)return;const dx=(ev.clientX-drag.sx)/sc,dy=(ev.clientY-drag.sy)/sc,o=drag.b;
+ const pdn=ev=>{if(ev.button>0)return;const h=ev.target.dataset&&ev.target.dataset.h,inb=ev.target===fr;if(!h&&!inb)return;ev.preventDefault();try{w.setPointerCapture(ev.pointerId)}catch(_){}drag={h:h||'mv',sx:ev.clientX,sy:ev.clientY,b:{...box},id:ev.pointerId}};
+ w.addEventListener('pointerdown',pdn);
+ const pmv=ev=>{if(!drag||(drag.id!=null&&ev.pointerId!==drag.id))return;const dx=(ev.clientX-drag.sx)/sc,dy=(ev.clientY-drag.sy)/sc,o=drag.b;
   if(drag.h==='mv'){box.x=o.x+dx;box.y=o.y+dy;clamp()}
   else{let x0=o.x,y0=o.y,x1=o.x+o.w,y1=o.y+o.h;const hh=drag.h;if(hh.includes('w'))x0=Math.min(x1-8,Math.max(0,o.x+dx));if(hh.includes('e'))x1=Math.max(x0+8,Math.min(NW,x1+dx));if(hh.includes('n'))y0=Math.min(y1-8,Math.max(0,o.y+dy));if(hh.includes('s'))y1=Math.max(y0+8,Math.min(NH,y1+dy));
    const r=ratio();if(r){let nw=x1-x0,nh=nw/r;if(hh.includes('n'))y0=y1-nh;else y1=y0+nh;if(y0<0){y0=0;nh=y1-y0;nw=nh*r;if(hh.includes('w'))x0=x1-nw;else x1=x0+nw}if(y1>NH){y1=NH;nh=y1-y0;nw=nh*r;if(hh.includes('w'))x0=x1-nw;else x1=x0+nw}}
    box={x:x0,y:y0,w:x1-x0,h:y1-y0};clamp()}
-  show()});
- const up=()=>{drag=null};w.addEventListener('pointerup',up);w.addEventListener('pointercancel',up);
+  show()};
+ const up=ev=>{if(drag&&ev&&ev.pointerId!=null&&drag.id!=null&&ev.pointerId!==drag.id)return;drag=null};
+ addEventListener('pointermove',pmv);addEventListener('pointerup',up);addEventListener('pointercancel',up);addEventListener('blur',up);
  addEventListener('resize',lay);img.onload=lay;if(img.complete)lay()}
 function lgPanel(){let p=$('#lgp');if(!p){p=document.createElement('div');p.id='lgp';p.className='lgp';document.body.appendChild(p)}
  cur.lg=(cur.lg||[]).filter(l=>l.id==='dg'||lib.some(x=>x.id===l.id));

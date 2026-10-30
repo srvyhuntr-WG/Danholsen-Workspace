@@ -1282,3 +1282,26 @@ html[data-t] .kd.old{background:color-mix(in srgb,var(--ac) 35%,transparent);col
  visibility:visible;pointer-events:auto;transition:transform .22s,visibility 0s!important}
 .etb.vz{transition:none!important}
 body:has(.etb.show) .wrap.ew{padding-bottom:340px}
+
+/* v68: edit bar is docked to the very top of the screen while scrolling (under the header only while the header is on screen), and is compact */
+.etb{top:max(var(--eth,0px),calc(env(safe-area-inset-top,0px) + 6px))!important;padding:8px 10px!important;border-radius:18px!important}
+.etb .eh{min-height:22px}
+.etb .er{margin-top:6px}
+.etb .ab{width:40px;height:40px;border-radius:10px}
+.etb .nx{height:40px;border-radius:10px}
+.etb .eh button{padding:3px 4px}
+body:has(.etb.show) .wrap.ew{padding-bottom:55vh}
+@media(min-width:900px){
+ .etb{display:flex;flex-wrap:wrap;column-gap:10px;align-items:center}
+ .etb>.eh{flex:0 0 100%}
+ .etb>.er{flex:1 1 auto}
+ .etb>.fhn{flex:0 0 100%}
+}
+
+/* v68: logo crop - edge handles so the shape can also be changed from the sides */
+.lcf b{position:absolute;touch-action:none;background:transparent}
+.lcf b[data-h=n]{left:14px;right:14px;top:-9px;height:18px;cursor:ns-resize}
+.lcf b[data-h=s]{left:14px;right:14px;bottom:-9px;height:18px;cursor:ns-resize}
+.lcf b[data-h=e]{top:14px;bottom:14px;right:-9px;width:18px;cursor:ew-resize}
+.lcf b[data-h=w]{top:14px;bottom:14px;left:-9px;width:18px;cursor:ew-resize}
+.lcf i{z-index:1}
