@@ -280,8 +280,9 @@ ${d?`<div class="bkc"><div><b>${esc(d.name)}</b><small>Unfinished edits saved ${
  layout();setBar();dockPos()};
 
 /* the dock rides above the on-screen keyboard (iPhone keeps fixed bars behind it) */
-function dockPos(){const b=$q('#pebar');if(!b)return;const v=window.visualViewport;let kb=0;if(v)kb=Math.max(0,Math.round(innerHeight-v.height-v.offsetTop));b.style.setProperty('--kb',kb+'px')}
-if(window.visualViewport){let t=0;const f=()=>{t=0;dockPos()},s2=()=>{if(!t)t=requestAnimationFrame(f)};visualViewport.addEventListener('resize',s2);visualViewport.addEventListener('scroll',s2)}
+let kbOn=false;const b0=()=>kbOn;
+function dockPos(){const b=$q('#pebar');if(!b)return;const v=window.visualViewport;let kb=0;if(v)kb=Math.max(0,Math.round(innerHeight-v.height-v.offsetTop));kbOn=kb>0;b.style.setProperty('--kb',kb+'px')}
+if(window.visualViewport){let t=0;const f=()=>{t=0;dockPos()},s2=()=>{if(!t)t=requestAnimationFrame(f)};visualViewport.addEventListener('resize',s2);visualViewport.addEventListener('scroll',()=>{if(visualViewport.offsetTop>=2||b0())s2()})}
 
 /* ---- the top bar stays pinned at the top while the document scrolls beneath it (v69) ---- */
 (function(){const t=$q('.top');if(t)t.classList.remove('hide')})();
