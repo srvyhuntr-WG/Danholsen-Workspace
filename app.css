@@ -1472,3 +1472,93 @@ html[data-t] .hm .chips{margin:0 0 12px}
  .hnew{gap:14px}
 }
 @media(max-width:359px){.hn small{display:none}.hn{min-height:68px}}
+
+/* v79: logo panel - header, note and live preview stay pinned while the rest scrolls; each logo has its own remove button */
+.lgs .lgst{position:sticky;top:-16px;z-index:3;margin:-16px -16px 12px;padding:16px 16px 2px;background:inherit;border-radius:22px 22px 0 0}
+.lgs .lgst .lgpv{margin-bottom:10px;box-shadow:0 6px 14px -10px rgba(0,0,0,.5)}
+.lgs .lgst .lgn{margin:6px 0 10px}
+.libx.rmx{background:#D64545;color:#fff}
+.lgs h3{margin:16px 0 8px}
+@media(max-width:700px){.lgs{max-height:74vh}}
+@supports(height:100dvh){@media(max-width:700px){.lgs{max-height:74dvh}}}
+
+/* v79: select several documents */
+.srow{display:flex;gap:10px;align-items:center;margin:0 0 12px}
+html[data-t] .hm .srow .search{flex:1;min-width:0;margin:0}
+.selb{flex:none;height:50px;padding:0 18px;border-radius:999px;border:1px solid var(--ln);background:var(--sf);color:var(--tx);font:700 14px var(--font);cursor:pointer}
+.selb:active{background:var(--sf2)}
+.selbox{display:none;flex:none;width:26px;height:26px;border-radius:8px;border:2px solid color-mix(in srgb,var(--tx) 40%,transparent);background:var(--sf);place-items:center;color:transparent;font:800 16px/1 var(--font);margin-right:4px}
+body.selm .selbox{display:grid}
+body.selm .selbox::after{content:'\2713'}
+body.selm .sel .selbox{background:var(--ac);border-color:var(--ac);color:#1B1B1B}
+body.selm .frow,body.selm .rcard{cursor:pointer}
+body.selm .frow.sel,html[data-t] body.selm .rcard.sel{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 12%,var(--sf));box-shadow:0 0 0 2px var(--ac)}
+body.selm .dact,body.selm .frow .ib,body.selm .frow .lgbtn{opacity:.35;pointer-events:none}
+body.selm .nav{visibility:hidden}
+body.selm .wrap{padding-bottom:120px}
+.selbar{position:fixed;z-index:50;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;display:flex;align-items:center;gap:8px;padding:10px;border-radius:20px;background:var(--sf);border:1px solid var(--ln);box-shadow:0 18px 40px -12px rgba(0,0,0,.6)}
+.selbar .sbn{flex:1;min-width:0;text-align:center;font:700 14px var(--font);color:var(--tx);white-space:nowrap}
+.selbar .sb{flex:none;min-height:44px;padding:0 14px;border-radius:13px;border:1px solid var(--ln);background:var(--sf2);color:var(--tx);font:700 14px var(--font);cursor:pointer}
+.selbar .sb.d{background:#D64545;border-color:#D64545;color:#fff}
+.selbar .sb[disabled]{opacity:.4}
+@media(min-width:900px){.selbar{left:100px}body.selm .nav{visibility:visible}}
+.fact{flex-wrap:wrap}
+
+/* ===== v80: Recent as tiles (2 on phones, 4 on larger screens, then See all) ===== */
+.rgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch}
+.rgrid>.empty{grid-column:1/-1;margin:0;border:1.5px dashed var(--ln);border-radius:var(--rc);background:transparent}
+.rgrid:not([data-all])>.rtile:nth-child(n+3){display:none}
+@media(min-width:760px){
+ .rgrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+ .rgrid:not([data-all])>.rtile:nth-child(n+3){display:flex}
+ .rgrid:not([data-all])>.rtile:nth-child(n+5){display:none}
+}
+.rtile{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0;padding:8px 8px 6px!important;border:1px solid var(--ln);border-radius:var(--rc);background:var(--sf);box-shadow:var(--sh);color:var(--tx);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,border-color .15s,transform .12s}
+html[data-t] .rtile::before{display:none}
+.rtile:active{background:var(--sf2);transform:scale(.985)}
+.rtile:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+@media(hover:hover){.rtile:hover{border-color:color-mix(in srgb,var(--ac) 65%,var(--ln))}}
+.rtile .rth{display:block;width:100%;aspect-ratio:1/1.05;border-radius:14px;border:1px solid var(--ln);background:#fff;box-shadow:inset 0 -28px 22px -24px rgba(14,26,43,.16)}
+[data-t=dark] .rtile .rth{border-color:#ffffff26}
+.rtile[data-k=rep] .rth{box-shadow:inset 0 3px 0 var(--ac),inset 0 -28px 22px -24px rgba(14,26,43,.16)}
+.rtx{display:block;min-width:0;padding:0 4px;flex:1}
+.rtx b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font:700 14px/1.25 Inter,system-ui,sans-serif;letter-spacing:-.01em;overflow-wrap:anywhere;min-height:35px}
+.rtx .dmeta{margin-top:6px;gap:4px 6px}
+.rwhen{display:block;margin-top:6px;color:var(--mu);font:500 12px/1.3 var(--font)}
+.ract{display:flex;align-items:center;justify-content:flex-end;gap:0;margin:0 -2px;padding:0 2px 2px;border-top:1px solid var(--ln)}
+.rtile .ract .ib{width:38px;height:38px;min-width:38px;min-height:38px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--mu);display:grid;place-items:center}
+.rtile .ract .ib.dpin.on{color:var(--ac)}.rtile .ract .ib.dpin.on svg{fill:currentColor}
+.rtile .ract .ib.ddl{color:#1E9E5A}.rtile .ract .ib.ddl svg{width:20px;height:20px}
+.rtile .ract .ib.ddel:active{color:#D64545;background:color-mix(in srgb,#D64545 12%,transparent)}
+@media(hover:hover){.rtile .ract .ib.dpin:hover{color:var(--tx);background:var(--sf2)}.rtile .ract .ib.ddel:hover{color:#D64545;background:color-mix(in srgb,#D64545 12%,transparent)}}
+.rtile .selbox{position:absolute;top:14px;left:14px;z-index:2;margin:0;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+body.selm .ract{opacity:.35;pointer-events:none}
+body.selm .rtile.sel{border-color:var(--ac);background:color-mix(in srgb,var(--ac) 12%,var(--sf));box-shadow:0 0 0 2px var(--ac)}
+@media(max-width:380px){.rtx b{font-size:13px}.rtile{padding:6px 6px 4px!important}}
+/* See all / Show fewer */
+.dmore{display:flex;align-items:center;justify-content:center;width:100%;height:48px;margin:12px 0 0}
+#rail[data-all]+.dmore{display:flex}
+#rail[data-force]+.dmore{display:none}
+@media(min-width:760px){.dmore.ph:not(.open){display:none}}
+.fsec{margin:6px 0 4px}
+.fsec .shd{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 0 12px}
+.fsh{margin:26px 0 12px}
+.hm .hsec>.shd .sec,.fsec .sec,.fsh .sec{margin:0}
+
+/* v80: calmer yellow glow (Continue editing, buttons, Choose a PDF) */
+html[data-t] .cont{box-shadow:0 8px 18px -16px rgba(14,12,6,.45)}
+html[data-t] .btn.p,.btn.p,.pe-pick .btn.p{box-shadow:0 1px 0 #ffffff55 inset,0 3px 8px -6px rgba(242,169,0,.4)}
+html[data-t] .nav button.on{box-shadow:none}
+.dadd,.h2b.p{box-shadow:0 3px 8px -6px rgba(242,169,0,.45)}
+html[data-t] .cont .btn.p.cop{box-shadow:none}
+
+/* v80: Edit PDF screen */
+.bkc>div{min-width:0;flex:1 1 auto}
+.bkc b{overflow-wrap:anywhere;word-break:break-word}
+.bkc .btn{min-width:88px}
+.pe-pick .bkc{box-sizing:border-box;width:100%;max-width:100%}
+.pe-opt{padding:8px 12px;margin:0 0 10px}
+.pe-opt small{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.pe-name span{flex:1}
+/* the page notice sits at the bottom of the page so it never covers the document header or logo */
+.pe-note{top:auto;bottom:34px;left:10px;right:10px;padding:8px 10px;font-size:12px;background:color-mix(in srgb,#000 78%,transparent)}

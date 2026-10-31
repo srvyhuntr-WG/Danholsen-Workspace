@@ -8,6 +8,15 @@
 const PE=window.PE={};
 let pj=null,st=null,addMode=false,act=null,io=null,hh=0,ASC=.95,DSC=.25,saveT=0;
 const UI='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',RI='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>',TI='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6V4h14v2M12 4v12M9 16h6M18 17v5M15.5 19.5h5"/></svg>',KEY='pdfdraft',$q=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* iPhone Safari cannot loop over a ReadableStream with for-await, which pdf.js uses inside getTextContent (the cause of
+   "undefined is not a function (near '...t of e...')"). Add the missing piece, and read text streams by hand as well. */
+try{if(typeof ReadableStream!=='undefined'&&!ReadableStream.prototype[Symbol.asyncIterator]){ReadableStream.prototype[Symbol.asyncIterator]=function(){const r=this.getReader();return{next(){return r.read()},return(){try{r.releaseLock()}catch{}return Promise.resolve({done:true,value:undefined})},[Symbol.asyncIterator](){return this}}}}}catch{}
+async function readText(pg){
+ const out={items:[],styles:Object.create(null)};
+ if(typeof pg.streamTextContent!=='function')return pg.getTextContent();
+ const rd=pg.streamTextContent({includeMarkedContent:false,disableNormalization:true}).getReader();
+ for(;;){const{value,done}=await rd.read();if(done)break;if(value){for(const it of value.items)out.items.push(it);Object.assign(out.styles,value.styles)}}
+ return out}
 const LIB=async()=>{if(!pj){pj=await import('./pdf.min.mjs');pj.GlobalWorkerOptions.workerSrc='pdf.worker.min.mjs'}return pj};
 const metrics=async()=>{try{await document.fonts.load('400 20px "Public Sans"');const c=document.createElement('canvas').getContext('2d');c.font='400 100px "Public Sans"';const m=c.measureText('Hg');if(m.fontBoundingBoxAscent){ASC=m.fontBoundingBoxAscent/100;DSC=m.fontBoundingBoxDescent/100}}catch{}};
 
@@ -67,7 +76,7 @@ PE.resume=async()=>{const d=await PE.draft();if(!d)return;
 /* ---- text lines: merge pdf.js runs that sit on one baseline into one editable line ---- */
 async function extract(P){
  if(P.blocks)return P.blocks;
- const vp=P.pg.getViewport({scale:1}),tc=await P.pg.getTextContent(),runs=[];
+ const vp=P.pg.getViewport({scale:1}),tc=await readText(P.pg),runs=[];
  const vt=vp.transform;
  for(const it of tc.items){if(!it.str||!it.str.trim())continue;const t=it.transform;
   /* keep only text that reads left to right and upright on screen (this also works on pages stored rotated) */
@@ -229,7 +238,7 @@ async function buildVector(prog){
  /* check the new file: same pages, and every new line can be read back */
  const doc=await lib.getDocument({data:out.slice(0)}).promise;
  try{if(doc.numPages!==st.pages.length)throw new Error('page count');
-  for(const q of need){const pg=await doc.getPage(q.n),tc=await pg.getTextContent(),txt=nsp(tc.items.map(x=>x.str).join(''));
+  for(const q of need){const pg=await doc.getPage(q.n),tc=await readText(pg),txt=nsp(tc.items.map(x=>x.str).join(''));
    for(const t of q.chk){if(!txt.includes(nsp(t)))throw new Error('text not found: '+t.slice(0,30))}}}
  finally{try{doc.destroy()}catch{}}
  return out}
