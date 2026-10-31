@@ -6,7 +6,7 @@
    Signing rows are always pinned to the bottom of the page. */
 (function(){
 const PAGES={letter:[612,792],a4:[595.28,841.89]};
-const FMT={jcf:'letter',trn:'letter',tsh:'letter',mpi:'a4',ut:'a4'};   /* matches the six originals; change here to switch paper */
+const FMT={jcf:'letter',trn:'letter',tsh:'letter',mpi:'a4',ut:'a4',inv:'a4',ltr:'a4',trq:'a4',vpr:'a4'};   /* matches the six originals; change here to switch paper */
 const LWT={hair:.5,thin:.75,line:1,rule:1.5,rep:.6};                  /* the ONLY line weights used, in points */
 const K={ink:[0,0,0],grey:[217,217,217],lgrey:[242,242,242],dark:[59,59,59],amber:[242,169,0],hr:[191,191,191],white:[255,255,255]};
 const TICK=/^\s*[√✓✔]\s*$/;
@@ -36,7 +36,7 @@ async function build(doc,ctx){
  const {jsPDF}=window.jspdf;
  const pdf=new jsPDF({unit:'pt',format:[PW,PH],compress:true});
  pdf.setProperties({title:doc.title||T.n,author:'Danholsen Global Services Limited',creator:'Danholsen Workspace'});
- const LW={jcf:LWT.line,trn:LWT.line,tsh:LWT.thin,mpi:LWT.rep,ut:LWT.rep}[doc.t];
+ const LW={jcf:LWT.line,trn:LWT.line,tsh:LWT.thin,mpi:LWT.rep,ut:LWT.rep,inv:LWT.thin,ltr:LWT.thin,trq:LWT.thin,vpr:LWT.thin}[doc.t];
  const UT=doc.t==='ut',MPI=doc.t==='mpi',REP=st==='rep';
  const ovl=(k,df)=>doc.o&&doc.o['L:'+k]!=null?doc.o['L:'+k]:df;   /* report label edited by the user, else the printed default */
  const al=(k,def)=>doc.a[k]||def;
@@ -104,11 +104,18 @@ async function build(doc,ctx){
  if(doc.t==='trn'){L0=36.5;R0=576.5;pinBottom=756;pinH=196}
  if(doc.t==='tsh'){L0=36;R0=574;pinBottom=756;pinH=145}
  if(REP){L0=27;R0=571;top=31.3;pinBottom=PH-23.7;pinH=122;every=true}
+ if(st==='gen'){L0=40;R0=PW-40;top=36;pinBottom=PH+200;pinH=0;footY=T.foot?PH-62:PH-34}   /* generic documents: letterhead on every page, office footer, no pinned signing block */
+ let genP=0;
  const W=R0-L0,pinTop=()=>pinBottom-pinH;
  const flowLimit=()=>every?pinTop()-10:(footY?footY-10:PH-36);
 
  /* ================= headers ================= */
  const header=()=>{
+  if(st==='gen'){const first=genP++===0;seqLogos(L0,30,220,34);text('RC: 507622',R0,48,9,true,'right');y=84;
+   if(T.tag){const L=wrap(clean(T.tag),W-40,9.5,true);L.forEach((q,i)=>text(q,PW/2,y+12+i*12,9.5,true,'center'));y+=L.length*12+14}
+   if(first&&!T.notitle){const tt=clean((doc.title||T.n).toUpperCase()),z=vs('h:t',T.tsz||15);text(tt,PW/2,y+z,z,true,'center');font(z,true);const w=pdf.getTextWidth(tt);line(PW/2-w/2,y+z+2.5,PW/2+w/2,y+z+2.5,LWT.thin);y+=z+20}
+   else if(first)y+=10;else y+=6;
+   return}
   if(doc.t==='jcf'){seqLogos(36,36,300,32);line(36,89.5,576,89.5,LWT.rule);
    {const a=al('h:t','left'),tt=(doc.title||T.n).toUpperCase(),b=vb('h:t',true),noT='JCF NO: '+(V('no')||''),nz=vs('no',10),nb=vb('no',true);
     font(nz,nb);const nw=pdf.getTextWidth(clean(noT)),fitZ=wid=>{let z=vs('h:t',16);const tw=()=>{font(z,b);return pdf.getTextWidth(clean(tt))};while(z>10&&tw()>wid)z-=.5;return{z,ok:tw()<=wid}};
@@ -141,6 +148,10 @@ async function build(doc,ctx){
    y=yy+h2+10}
  };
  const footer=()=>{
+  if(st==='gen'){const y0=PH-50;
+   if(T.foot){text('OFFICE: #8b Road 1 Fourth Avenue, Rumuibekwe Estate Beside Liquid Bulk Filling Station, Rumukurushi Junction, Port Harcourt, Rivers State, Nigeria',PW/2,y0,7,false,'center');
+    text('Phone: +23484555508 +23484555509, +2349021004659    Email: sales@danholsen.com    Website: www.danholsen.com',PW/2,y0+10,7,false,'center')}
+   if(T.no)text(T.no,L0,PH-20,7.5,false,'left');return}
   if(doc.t==='tsh'){line(L0,766,R0,766,LWT.hair,K.hr);text(['Danholsen Global Services Limited','Weekly Timesheet',V('client')].filter(Boolean).join('   |   '),L0,778,8,false,'left',[90,90,90]);return}
   if(doc.t!=='jcf')return;
   line(36,747.9,576,747.9,LWT.thin);const m=String(T.no).match(/^(.*?)\s*(Rev:.*)$/);
@@ -180,7 +191,7 @@ async function build(doc,ctx){
  const finishPage=()=>{if(every)pinned();footer()};
  const contHeader=()=>{seqLogos(36,28,120,20);text((doc.title||T.n).toUpperCase()+' (continued)',R0,38,9,true,'right');
   text(['Week '+V('wk'),V('client'),V('proj')].filter(x=>x&&x!=='Week ').join('   |   '),R0,50,8,false,'right',[90,90,90]);line(L0,58,R0,58,LWT.thin,K.amber);y=70};
- const newPage=()=>{finishPage();pdf.addPage([PW,PH]);y=top;if(every)header();else if(doc.t==='tsh')contHeader();else y=36};
+ const newPage=()=>{finishPage();pdf.addPage([PW,PH]);y=top;if(every||st==='gen')header();else if(doc.t==='tsh')contHeader();else y=36};
  const need=h=>{if(y+h>flowLimit())newPage()};
 
  /* ---- generic table ---- */
@@ -220,12 +231,43 @@ async function build(doc,ctx){
  /* ================= sections ================= */
  const hS=s=>'h:S:'+T.S.indexOf(s);
  const heading=(t,hk)=>{if(!t)return;
-  if(doc.t==='trn'){need(22);box(L0,y,W,22,{fill:K.dark,lw:LW});put(titleCase(t),L0,y,W,22,{sz:10,b:true,al:'left',pad:8,fg:K.white});y+=22}
+  if(st==='gen'){y+=2;need(22);box(L0,y,W,20,{fill:K.dark,lw:LW});put(titleCase(t),L0,y,W,20,{sz:9.5,b:true,al:'left',pad:7,fg:K.white});y+=20}
+  else if(doc.t==='trn'){need(22);box(L0,y,W,22,{fill:K.dark,lw:LW});put(titleCase(t),L0,y,W,22,{sz:10,b:true,al:'left',pad:8,fg:K.white});y+=22}
   else if(REP){const z=vs(hk,10),h_=Math.max(14,z*1.45);need(h_);bar(L0,y,W,h_,t,{sz:z,b:vb(hk,true),al:al(hk,'center')});y+=h_}
   else if(doc.t==='jcf'){need(39);text(t.toUpperCase(),L0+W/2,y+24,10.5,true,'center');y+=39}
   else if(doc.t==='tsh'){y+=12;need(22+30);box(L0,y,W,22,{fill:K.dark,lw:LW});put(t.toUpperCase(),L0,y,W,22,{sz:9.5,b:true,al:'left',pad:8,fg:K.white});y+=22}};
 
+ /* ---- generic documents (invoice, letter, procedure, practice report) ---- */
+ const genGrid=s=>{heading(s.t,hS(s));const u=W/s.n;
+  pack(s).forEach(r=>{let h=s.n===1?21:24;const LWd=w=>Math.min(s.n===1?190:130,w*(s.n>=3?.52:.42));
+   r.forEach(([k,sp])=>{const w=sp*u,lw_=LWd(w);h=Math.max(h,cellH(V(k),w-lw_,{pad:6,sz:vs(k,10),b:vb(k,false)}),cellH(T.F[k].l,lw_,{b:true,pad:6,sz:9.5}))});
+   need(h);let x=L0;
+   r.forEach(([k,sp])=>{const w=sp*u,lw_=LWd(w);cell(x,y,lw_,h,{t:T.F[k].l,b:true,sz:9.5,al:'left',pad:6,fill:K.lgrey});
+    cell(x+lw_,y,w-lw_,h,{t:V(k),al:al(k,'left'),pad:6,sz:vs(k,10),b:vb(k,false)});sig(k,x+lw_+4,y+2,w-lw_-8,h-4);x+=w});y+=h})};
+ const genPs=s=>{const sz=vs(s.f,s.sz||10.5),b=vb(s.f,!!s.b),a=al(s.f,s.al||'left'),lh=sz*1.32,raw=String(d[s.f]==null?'':d[s.f]);
+  if(s.lab){font(sz,true);const lw=pdf.getTextWidth(clean(s.lab))+6;need(38);text(s.lab,L0,y+sz+16,sz,true);line(L0+lw,y+sz+18,L0+lw+200,y+sz+18,LWT.thin);
+   put(d[s.f],L0+lw,y+6,200,sz+14,{al:a,pad:2,va:'bottom',sz,b});sig(s.f,L0+lw,y,200,36);y+=40;return}
+  if(s.lead){need(lh+4);text(s.lead+':',L0,y+sz,sz,true);y+=lh+2}
+  let used=0;const pars=raw===''?[]:raw.split('\n');
+  pars.forEach(par=>{const bl=/^\s*[•·]\s/.test(par),ind=bl?16:0,body=clean(bl?par.replace(/^\s*[•·]\s/,''):par),L=body===''?['']:wrap(body,W-ind,sz,b);
+   L.forEach((ln,li)=>{need(lh);const ty=y+sz;if(bl&&li===0){fc(K.ink);pdf.circle(L0+6,ty-sz*.3,1.6,'F')}
+    const xx=a==='center'?PW/2:a==='right'?R0:L0+ind;text(ln,xx,ty,sz,b,a);
+    if(s.u&&ln){font(sz,b);const w=pdf.getTextWidth(clean(ln)),x0=a==='center'?PW/2-w/2:a==='right'?R0-w:L0+ind;line(x0,ty+2,x0+w,ty+2,LWT.thin)}
+    y+=lh;used++})});
+  for(;used<(s.min||0);used++){need(lh);y+=lh}
+  y+=s.gap??6};
+ const genSk=s=>{const h=60,x=L0+6,w=W-12;need(h+6);box(x,y,w,h,{lw:LWT.thin});
+  text('Side - A',x+8,y+14,8.5,false);text(clean(s.lab),x+w-8,y+14,8.5,false,'right');
+  const ar=yy=>{line(x+8,yy,x+62,yy,LWT.thin);line(x+56,yy-2.6,x+62,yy,LWT.thin);line(x+56,yy+2.6,x+62,yy,LWT.thin)};
+  ar(y+22);line(x,y+h/2-3,x+w,y+h/2-3,LWT.thin);line(x,y+h/2+3,x+w,y+h/2+3,LWT.thin);ar(y+h-21);text('Side - B',x+8,y+h-6,8.5,false);y+=h+6};
+ const genFd=()=>{newPage();const R=80,F=[[8,[1,5,3,7,2,6,4,8],'L'],[12,[1,5,9,3,7,11,2,6,10,4,8,12],'R'],[16,[1,9,5,13,3,11,7,15,2,10,6,14,4,12,8,16],'L']],
+   rowH=Math.min(215,(footY-10-y)/3);
+  F.forEach(([n,ring,side],i)=>{const cy=y+rowH*i+rowH/2,cx=side==='L'?L0+150:R0-150;dc(K.ink);pdf.setLineWidth(LWT.thin);pdf.circle(cx,cy,R,'S');
+   ring.forEach((v,j)=>{const ang=-Math.PI/2+2*Math.PI*j/n;text(String(v),cx+(R+12)*Math.cos(ang),cy+(R+12)*Math.sin(ang)+3.5,10.5,false,'center')});
+   text(n+' BOLT FLANGE',side==='L'?cx+R+36:cx-R-36,cy+5,14,true,side==='L'?'left':'right')});
+  y+=rowH*3};
  const sections={
+  ps(s){genPs(s)},sk(s){genSk(s)},fd(){genFd()},
   jh(){},
   lr(s){s.f.forEach(k=>{const l=T.F[k].l.replace(/\s*\/\s*/g,'/').replace(/\.$/,'').toUpperCase()+':',v=clean(d[k]).toUpperCase(),
     h=Math.max(19.6,nl(v,W-139,vs(k,10.5),vb(k,false))*vs(k,10.5)*1.2+7);need(h);
@@ -236,6 +278,7 @@ async function build(doc,ctx){
     cell(x,y,cw[0],h,{t:i+1,sz:10});x+=cw[0];cell(x,y,cw[1],h,{t,b:true,sz:9.5,al:'left',pad:6});x+=cw[1];
     s.o.forEach((o,j)=>{box(x,y,cw[2+j],h,{lw:LW});if(String(d[k])===String(j)){fc(K.ink);pdf.circle(x+cw[2+j]/2,y+h/2,4.2,'F')}x+=cw[2+j]});y+=h});y+=26},
   g(s){
+   if(st==='gen'){genGrid(s);return}
    if(doc.t==='trn'||doc.t==='tsh'){const u=W/s.n,LWd=doc.t==='trn'?90:86;
     let rowsP=pack(s);
     if(doc.t==='tsh'&&s.f.some(f=>(Array.isArray(f)?f[0]:f)==='wk')){ /* week / from / to strip */
@@ -267,6 +310,7 @@ async function build(doc,ctx){
    heading(s.t+' (mark with an [x])',hS(s));const h=17,cw=W/s.o.length;need(h);let x=L0;
    s.o.forEach((o,i)=>{const tw=22,kk='h:K:'+s.key+':'+i;cell(x,y,cw-tw,h,{t:o,sz:vs(kk,10),b:vb(kk,false),al:al(kk,'center'),pad:2});cell(x+cw-tw,y,tw,h,{t:(d[s.key]||[]).includes(i)?'X':'',b:true,sz:10});x+=cw});y+=h},
   tb(s){
+   if(st==='gen'){heading(s.t,hS(s));table(s,{hmin:22,rmin:s.rmin||26,hsz:9,bsz:10,align:s.al||['left']});return}
    if(doc.t==='jcf'){const w=[35,135,85,150,135];s.c=s.c;table(s,{sn:35,widths:w.slice(1),hmin:20.8,hsz:8.5,rmin:33,bsz:9,pad:5,align:['left','center','left','center'],boldCols:[true],va:'middle'});y+=0;return}
    if(doc.t==='trn'){table(s,{widths:[45,157.5,135,45,67.5,45,45],hmin:24,hsz:9.5,rmin:32,align:['center','left','center','center','center','center','center']});return}
    if(doc.t==='tsh'){heading(s.t,hS(s));table(s,{hmin:30,rmin:26,hsz:8.5,bsz:9.5,align:['left'],repeat:true,totals:'TOTAL DAYS'});return}

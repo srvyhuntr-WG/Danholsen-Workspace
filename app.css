@@ -1331,3 +1331,32 @@ body:has(.etb.show) .wrap.ew{padding-bottom:55vh}
 /* v70: floating bars stay put while the page scrolls (own layer, no transition on scroll) */
 .etb,.pe-dock,.pe-done{will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .pe-dock{transition:none}
+
+/* v72: generic documents (invoice, letter, torquing procedure, visual practice report) */
+.st-gen .gh{display:flex;align-items:center;justify-content:space-between;margin:0 0 3mm}
+.st-gen .gh .logos{border:0;min-height:14mm;flex:0 1 auto;background:transparent}
+.st-gen .gh .logos .slot{flex:0 0 auto;padding:0 3mm 0 0}
+.st-gen .rcn{font-size:9px;font-weight:700;align-self:flex-start;margin-top:4mm}
+.st-gen .tagl{text-align:center;font-weight:700;font-size:10px;line-height:1.3;margin:2mm 8mm 3mm}
+.st-gen .gt{text-align:center;margin:2mm 0 4mm}
+.st-gen .gt h2{display:inline-block;margin:0;font-weight:800;text-decoration:underline;text-underline-offset:2px}
+.st-gen .ps{font-size:12px;line-height:1.35}
+.st-gen .ps.b .v{font-weight:700}
+.st-gen .ps.u .v{text-decoration:underline}
+.st-gen .ps .v{display:block;min-height:1.35em;white-space:pre-wrap;border:0;background:transparent;padding:0}
+.st-gen .ps .pl{font-weight:700}
+.st-gen .ps .pk{font-weight:700;margin-right:6px}
+.st-gen .of{margin-top:6px;text-align:center;font-size:8px;color:#222;line-height:1.35}
+.st-gen .skb{position:relative;height:25mm;border:1px solid #111;margin:2mm 2mm 3mm;font-size:10px}
+.st-gen .skb span{position:absolute}
+.st-gen .skb .sa{left:2mm;top:1.5mm}.st-gen .skb .sw{right:2mm;top:1.5mm}.st-gen .skb .sb{left:2mm;bottom:1.5mm}
+.st-gen .skb .ar{position:absolute;left:2mm;width:15mm;border-top:1px solid #111}
+.st-gen .skb .a1{top:7.5mm}.st-gen .skb .a2{bottom:7.5mm}
+.st-gen .skb .wl{position:absolute;left:0;right:0;border-top:1px solid #111}
+.st-gen .skb .w1{top:11mm}.st-gen .skb .w2{top:14mm}
+.st-gen .fdg{display:flex;flex-direction:column;gap:3mm;margin-top:4mm;break-before:page}
+.st-gen .fdr{display:flex;align-items:center;gap:8mm}
+.st-gen .fdr.rt{flex-direction:row-reverse}
+.st-gen .fdr b{font-size:14px}
+.st-gen .fdr svg{flex:none}
+.st-gen .gt h2{text-transform:uppercase}
