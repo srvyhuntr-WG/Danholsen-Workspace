@@ -37,18 +37,20 @@
 <div id="app"></div>
 <noscript>Danholsen Workspace needs JavaScript.</noscript>
 <script src="store.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="logo.js"></script>
 <script src="publicsans-pdf.js"></script>
 <script src="pdf.js"></script>
 <script src="pdfinc.js"></script>
 <script>
-/* Start the app only once storage AND every font declared in fonts.css are ready, so all text (body, headings, tiles) is drawn once
+/* Start the app only once the person is signed in and approved, storage is ready AND every font declared in fonts.css are ready, so all text (body, headings, tiles) is drawn once
    in its final font and never swaps after the first paint. The font wait is capped at 3 s so a slow or failed load can never block the app. */
 (function(){
 var F=document.fonts?Array.from(document.fonts).map(function(f){return f.load().catch(function(){})}):[];
 var fonts=Promise.race([Promise.all(F),new Promise(function(r){setTimeout(r,3000)})]);
-Promise.all([DWSTORE.ready,fonts]).then(function(){["app.js","pdfedit.js"].forEach(function(s){var e=document.createElement("script");e.src=s;e.async=false;document.body.appendChild(e)})})})();
+Promise.all([DWSTORE.ready,fonts,DWAUTH.gate()]).then(function(){["app.js","pdfedit.js"].forEach(function(s){var e=document.createElement("script");e.src=s;e.async=false;document.body.appendChild(e)})})})();
 </script>
 </body>
 </html>

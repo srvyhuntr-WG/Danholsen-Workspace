@@ -190,8 +190,8 @@ async function build(doc,ctx){
  /* ================= page flow ================= */
  const finishPage=()=>{if(every)pinned();footer()};
  const contHeader=()=>{seqLogos(36,28,120,20);text((doc.title||T.n).toUpperCase()+' (continued)',R0,38,9,true,'right');
-  text(['Week '+V('wk'),V('client'),V('proj')].filter(x=>x&&x!=='Week ').join('   |   '),R0,50,8,false,'right',[90,90,90]);line(L0,58,R0,58,LWT.thin,K.amber);y=70};
- const newPage=()=>{finishPage();pdf.addPage([PW,PH]);y=top;if(every||st==='gen')header();else if(doc.t==='tsh')contHeader();else y=36};
+  text((doc.t==='tsh'?['Week '+V('wk'),V('client'),V('proj')]:[V('client'),V('proj'),V('item')||V('comp')]).filter(x=>x&&x!=='Week ').join('   |   '),R0,50,8,false,'right',[90,90,90]);line(L0,58,R0,58,LWT.thin,K.amber);y=70};
+ const newPage=()=>{finishPage();pdf.addPage([PW,PH]);y=top;if(every||st==='gen')header();else if(doc.t==='tsh'||MPI||UT)contHeader();else y=36};
  const need=h=>{if(y+h>flowLimit())newPage()};
 
  /* ---- generic table ---- */
@@ -315,7 +315,7 @@ async function build(doc,ctx){
    if(doc.t==='trn'){table(s,{widths:[45,157.5,135,45,67.5,45,45],hmin:24,hsz:9.5,rmin:32,align:['center','left','center','center','center','center','center']});return}
    if(doc.t==='tsh'){heading(s.t,hS(s));table(s,{hmin:30,rmin:26,hsz:8.5,bsz:9.5,align:['left'],repeat:true,totals:'TOTAL DAYS'});return}
    if(s.t&&(MPI||T.hd||(UT&&s.key==='def')))heading(s.t,hS(s));
-   table(s,{hmin:18,rmin:14.5,hsz:9.5,bsz:10,bold:UT&&s.key==='prb'})},
+   table(s,{hmin:18,rmin:14.5,hsz:9.5,bsz:10,bold:UT&&s.key==='prb',repeat:true})},
   nt(s){const k='h:N:'+T.S.indexOf(s),h=Math.max(17,cellH(s.x,W,{sz:vs(k,10),b:vb(k,true),pad:4}));need(h);cell(L0,y,W,h,{t:s.x,b:vb(k,true),sz:vs(k,10),al:al(k,'center')});y+=h},
   tx(s){const t=s.t+': '+clean(d[s.f]);const w=W-12;
    if(!REP){heading(s.t,hS(s));const h=Math.max(doc.t==='trn'?35:27,cellH(d[s.f],W,{sz:vs(s.f,10),b:vb(s.f,false),pad:8}));need(h);cell(L0,y,W,h,{t:d[s.f],al:al(s.f,'left'),pad:8,va:'top',sz:vs(s.f,10),b:vb(s.f,false)});y+=h;return}

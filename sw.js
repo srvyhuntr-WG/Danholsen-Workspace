@@ -3,7 +3,7 @@
 // Nothing in this file needs a version number. The app fingerprints its own files and refreshes
 // itself when they change (see app.js), and the cache below is rebuilt from index.html on install.
 const C='dw-app';
-const EXTRA=['./','index.html','manifest.webmanifest','pdf.min.mjs','pdf.worker.min.mjs','danholsen-full.png','app.js','pdfedit.js'];
+const EXTRA=['./','index.html','config.js','auth.js','manifest.webmanifest','pdf.min.mjs','pdf.worker.min.mjs','danholsen-full.png','app.js','pdfedit.js'];
 async function precache(){
   const c=await caches.open(C);
   const grab=u=>c.add(new Request(u,{cache:'reload'})).catch(()=>{});
@@ -22,6 +22,7 @@ self.addEventListener('message',e=>{if(e.data==='skip')self.skipWaiting()});
 self.addEventListener('fetch',e=>{
   const r=e.request;
   if(r.method!=='GET'||!r.url.startsWith('http'))return;
+  if(new URL(r.url).origin!==location.origin)return;
   if(new URL(r.url).pathname.endsWith('/version.json'))return;
   /* Fonts never change under the same name: serve them straight from the cache (instant, no network wait at launch) and refresh in the background. */
   if(/\.woff2?$/.test(new URL(r.url).pathname)){
