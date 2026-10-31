@@ -1360,3 +1360,24 @@ body:has(.etb.show) .wrap.ew{padding-bottom:55vh}
 .st-gen .fdr b{font-size:14px}
 .st-gen .fdr svg{flex:none}
 .st-gen .gt h2{text-transform:uppercase}
+
+/* v73: templates are grouped into categories; each category opens on its own page */
+.cats{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media(min-width:620px){.cats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1000px){.cats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.cat{display:flex;flex-direction:column;align-items:stretch;gap:10px;min-height:176px;padding:18px;text-align:left;border:1px solid var(--ln);border-radius:var(--rc,20px);background:var(--sf);box-shadow:var(--sh);color:var(--tx);font:inherit;cursor:pointer;transition:border-color .2s,transform .15s}
+.cat:hover{border-color:color-mix(in srgb,var(--ac) 70%,var(--ln))}
+.cat:active{transform:scale(.985)}
+.cat .ch{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cat .cic{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:var(--ac);color:#1B1B1B}
+.cat .cic svg{width:24px;height:24px}
+.cat .cn{padding:5px 11px;border-radius:999px;border:1px solid var(--ln);font:600 12px/1 var(--font);color:var(--mu);white-space:nowrap}
+.cat b{margin-top:4px;font:700 18px/1.2 var(--font);letter-spacing:-.02em}
+.cat p{margin:0;font-size:13px;line-height:1.4;color:var(--mu)}
+.cat .cl{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:4px}
+.cat .cl i{font:500 11.5px/1.25 var(--font);font-style:normal;padding:4px 9px;border-radius:8px;background:var(--sf2);color:var(--mu)}
+/* v73: a category page lists its templates in a plain grid (no sideways carousel) on phones and tablets */
+@media(max-width:899px){
+ html[data-t] #ngrid.flat .dlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:0;padding:4px 0 24px;overflow:visible;scroll-snap-type:none}
+ html[data-t] #ngrid.flat .drow.tpc{flex:initial;min-width:0}
+}

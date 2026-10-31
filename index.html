@@ -22,6 +22,10 @@
 <meta name="application-name" content="Danholsen Workspace">
 <meta name="msapplication-TileImage" content="icon-144-v6.png">
 <meta name="msapplication-TileColor" content="#16130E">
+<link rel="preload" href="public-sans-latin-400-normal.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="public-sans-latin-500-normal.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="public-sans-latin-600-normal.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="public-sans-latin-700-normal.woff" as="font" type="font/woff" crossorigin>
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -34,6 +38,13 @@
 <script src="publicsans-pdf.js"></script>
 <script src="pdf.js"></script>
 <script src="pdfinc.js"></script>
-<script>DWSTORE.ready.then(function(){["app.js","pdfedit.js"].forEach(function(s){var e=document.createElement("script");e.src=s;e.async=false;document.body.appendChild(e)})})</script>
+<script>
+/* Start the app only once storage AND the UI fonts are ready, so text is drawn once in its final font (no fallback-to-Public-Sans swap).
+   The font wait is capped at 2.5 s so a slow or failed font load can never block the app. */
+(function(){
+var F=["400","500","600","700"].map(function(w){return document.fonts?document.fonts.load(w+" 16px 'Public Sans'"):Promise.resolve()});
+var fonts=Promise.race([Promise.all(F).catch(function(){}),new Promise(function(r){setTimeout(r,2500)})]);
+Promise.all([DWSTORE.ready,fonts]).then(function(){["app.js","pdfedit.js"].forEach(function(s){var e=document.createElement("script");e.src=s;e.async=false;document.body.appendChild(e)})})})();
+</script>
 </body>
 </html>
