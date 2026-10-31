@@ -6,7 +6,7 @@
    Signing rows are always pinned to the bottom of the page. */
 (function(){
 const PAGES={letter:[612,792],a4:[595.28,841.89]};
-const FMT={jcf:'letter',trn:'letter',tsh:'letter',mpi:'a4',ut:'a4',inv:'a4',ltr:'a4',trq:'a4',vpr:'a4'};   /* matches the six originals; change here to switch paper */
+const FMT={jcf:'letter',trn:'letter',tsh:'letter',mpi:'a4',ut:'a4',inv:'a4',ltr:'a4',trq:'a4',vpr:'a4',plt:'a4',pt:'a4',cal:'a4',ncr:'a4',ipr:'a4',tcc:'a4',tsf:'a4',ctv:'a4',tbt:'a4',jsa:'a4',ptw:'a4',inc:'a4',pjs:'a4',dsr:'a4',edn:'a4',mob:'a4',mtg:'a4',quo:'a4',exp:'a4'};   /* matches the six originals; change here to switch paper */
 const LWT={hair:.5,thin:.75,line:1,rule:1.5,rep:.6};                  /* the ONLY line weights used, in points */
 const K={ink:[0,0,0],grey:[217,217,217],lgrey:[242,242,242],dark:[59,59,59],amber:[242,169,0],hr:[191,191,191],white:[255,255,255]};
 const TICK=/^\s*[√✓✔]\s*$/;
@@ -36,7 +36,7 @@ async function build(doc,ctx){
  const {jsPDF}=window.jspdf;
  const pdf=new jsPDF({unit:'pt',format:[PW,PH],compress:true});
  pdf.setProperties({title:doc.title||T.n,author:'Danholsen Global Services Limited',creator:'Danholsen Workspace'});
- const LW={jcf:LWT.line,trn:LWT.line,tsh:LWT.thin,mpi:LWT.rep,ut:LWT.rep,inv:LWT.thin,ltr:LWT.thin,trq:LWT.thin,vpr:LWT.thin}[doc.t];
+ const LW={jcf:LWT.line,trn:LWT.line,tsh:LWT.thin,mpi:LWT.rep,ut:LWT.rep,inv:LWT.thin,ltr:LWT.thin,trq:LWT.thin,vpr:LWT.thin,plt:LWT.rep,pt:LWT.rep,cal:LWT.rep,ncr:LWT.rep,ipr:LWT.thin,tcc:LWT.rep,tsf:LWT.rep,ctv:LWT.rep,tbt:LWT.rep,jsa:LWT.rep,ptw:LWT.rep,inc:LWT.rep,pjs:LWT.rep,dsr:LWT.rep,edn:LWT.rep,mob:LWT.rep,mtg:LWT.thin,quo:LWT.thin,exp:LWT.thin}[doc.t];
  const UT=doc.t==='ut',MPI=doc.t==='mpi',REP=st==='rep';
  const ovl=(k,df)=>doc.o&&doc.o['L:'+k]!=null?doc.o['L:'+k]:df;   /* report label edited by the user, else the printed default */
  const al=(k,def)=>doc.a[k]||def;
@@ -200,7 +200,7 @@ async function build(doc,ctx){
   const tw=W-extra,ws=o.widths||cols.map(c=>c.w*tw/sum),
    all=(o.sn?[o.sn]:[]).concat(ws),hdrs=(o.sn?['S/N']:[]).concat(cols.map(c=>c.h));
   let hz=o.hsz||9.5;const bz=o.bsz||10,pad=o.pad??4,hasGrp=!REP?false:cols.some((c,i)=>/^accept$/i.test(c.h0)&&/^reject$/i.test(((cols[i+1]||{}).h0)||''));
-  const hdrText=h=>REP?(UT?h.toUpperCase():titleCase(h)):doc.t==='trn'?h:h.toUpperCase();
+  const hdrText=h=>REP?(UT?h.toUpperCase():T.hd?h:titleCase(h)):doc.t==='trn'?h:h.toUpperCase();
   {let k=1;hdrs.forEach((h,i)=>{font(hz,!o.hplain);String(hdrText(h)).split(/\s+/).forEach(wd=>{const ww=pdf.getTextWidth(clean(wd));if(ww>0)k=Math.min(k,(all[i]-6)/ww)})});hz=Math.max(7,hz*Math.min(1,k)-.01)}
   let hh=Math.max(o.hmin||18,...hdrs.map((h,i)=>cellH(hdrText(h),all[i],{sz:hz+(FM('h:C:'+s.key+':'+(o.sn?i-1:i)).s||0),b:!o.hplain,pad:3})));
   if(hasGrp)hh=Math.max(hh,2*16);
@@ -231,9 +231,9 @@ async function build(doc,ctx){
  /* ================= sections ================= */
  const hS=s=>'h:S:'+T.S.indexOf(s);
  const heading=(t,hk)=>{if(!t)return;
-  if(st==='gen'){y+=2;need(22);box(L0,y,W,20,{fill:K.dark,lw:LW});put(titleCase(t),L0,y,W,20,{sz:9.5,b:true,al:'left',pad:7,fg:K.white});y+=20}
+  if(st==='gen'){y+=2;need(66);box(L0,y,W,20,{fill:K.dark,lw:LW});put(titleCase(t),L0,y,W,20,{sz:9.5,b:true,al:'left',pad:7,fg:K.white});y+=20}
   else if(doc.t==='trn'){need(22);box(L0,y,W,22,{fill:K.dark,lw:LW});put(titleCase(t),L0,y,W,22,{sz:10,b:true,al:'left',pad:8,fg:K.white});y+=22}
-  else if(REP){const z=vs(hk,10),h_=Math.max(14,z*1.45);need(h_);bar(L0,y,W,h_,t,{sz:z,b:vb(hk,true),al:al(hk,'center')});y+=h_}
+  else if(REP){const z=vs(hk,10),h_=Math.max(14,z*1.45);need(h_+(T.hd?46:0));bar(L0,y,W,h_,t,{sz:z,b:vb(hk,true),al:al(hk,'center')});y+=h_}
   else if(doc.t==='jcf'){need(39);text(t.toUpperCase(),L0+W/2,y+24,10.5,true,'center');y+=39}
   else if(doc.t==='tsh'){y+=12;need(22+30);box(L0,y,W,22,{fill:K.dark,lw:LW});put(t.toUpperCase(),L0,y,W,22,{sz:9.5,b:true,al:'left',pad:8,fg:K.white});y+=22}};
 
@@ -295,7 +295,7 @@ async function build(doc,ctx){
       cell(x+lw_,y,w-lw_,h,{t:V(k),al:al(k,'left'),pad:7,sz:vs(k,10),b:vb(k,false)});x+=w});y+=h});
     y+=doc.t==='tsh'?0:0;return}
    /* report grids: label row (grey) + value row */
-   const t0=s.t0??s.t,showBar=s.t&&MPI&&t0!=='Conditions'&&t0!=='Magnetisation and consumables';
+   const t0=s.t0??s.t,showBar=s.t&&(MPI?(t0!=='Conditions'&&t0!=='Magnetisation and consumables'):!!T.hd);
    if(MPI&&t0==='Magnetisation and consumables'){consumables(s);return}
    if(showBar)heading(s.t,hS(s));
    let f=s.f.filter(x=>!(['date','no'].includes(Array.isArray(x)?x[0]:x)));
@@ -314,12 +314,12 @@ async function build(doc,ctx){
    if(doc.t==='jcf'){const w=[35,135,85,150,135];s.c=s.c;table(s,{sn:35,widths:w.slice(1),hmin:20.8,hsz:8.5,rmin:33,bsz:9,pad:5,align:['left','center','left','center'],boldCols:[true],va:'middle'});y+=0;return}
    if(doc.t==='trn'){table(s,{widths:[45,157.5,135,45,67.5,45,45],hmin:24,hsz:9.5,rmin:32,align:['center','left','center','center','center','center','center']});return}
    if(doc.t==='tsh'){heading(s.t,hS(s));table(s,{hmin:30,rmin:26,hsz:8.5,bsz:9.5,align:['left'],repeat:true,totals:'TOTAL DAYS'});return}
-   if(s.t&&(MPI||(UT&&s.key==='def')))heading(s.t,hS(s));
+   if(s.t&&(MPI||T.hd||(UT&&s.key==='def')))heading(s.t,hS(s));
    table(s,{hmin:18,rmin:14.5,hsz:9.5,bsz:10,bold:UT&&s.key==='prb'})},
   nt(s){const k='h:N:'+T.S.indexOf(s),h=Math.max(17,cellH(s.x,W,{sz:vs(k,10),b:vb(k,true),pad:4}));need(h);cell(L0,y,W,h,{t:s.x,b:vb(k,true),sz:vs(k,10),al:al(k,'center')});y+=h},
   tx(s){const t=s.t+': '+clean(d[s.f]);const w=W-12;
    if(!REP){heading(s.t,hS(s));const h=Math.max(doc.t==='trn'?35:27,cellH(d[s.f],W,{sz:vs(s.f,10),b:vb(s.f,false),pad:8}));need(h);cell(L0,y,W,h,{t:d[s.f],al:al(s.f,'left'),pad:8,va:'top',sz:vs(s.f,10),b:vb(s.f,false)});y+=h;return}
-   const h=Math.max(27,cellH(t,W,{sz:vs(s.f,10),b:vb(s.f,true),pad:5}));need(h);cell(L0,y,W,h,{t,b:vb(s.f,true),sz:vs(s.f,10),al:al(s.f,'left'),pad:5,va:'middle'});y+=h},
+   const h=Math.max(s.mh||27,cellH(t,W,{sz:vs(s.f,10),b:vb(s.f,true),pad:5}));need(h);cell(L0,y,W,h,{t,b:vb(s.f,true),sz:vs(s.f,10),al:al(s.f,'left'),pad:5,va:'middle'});y+=h},
  };
  /* MPI "Magnetisation and consumables": method column + WET / WET / FLUORESCENT columns */
  const consumables=s=>{const cw=[.28,.24,.24,.24].map(v=>v*W);let x;

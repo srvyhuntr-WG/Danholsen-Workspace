@@ -14,6 +14,54 @@ const mk=a=>Object.fromEntries(a.map(([k,l,df])=>[k,{l,df:df||''}]));
 const D=['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
 
 /* ---------- templates (one schema drives editor + A4 output) ---------- */
+/* shared pieces for the report-style templates added in v77 */
+const RC=[['date','Report date'],['no','Report number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location']],
+RS=[['td','Test date'],['tn','Name'],['tl','Level'],['ts','Signature'],['o1','Sign-off column 1','CLIENT'],['cn','Name'],['cd','Date'],['cx','Signature'],['o2','Sign-off column 2'],['dn','Name'],['dd','Date'],['dx','Signature'],['o3','Sign-off column 3'],['en','Name'],['ed','Date'],['ex','Signature']],
+RSX={k:'sx',leadL:'Test date',lead:'td',th:'DGSL NDT technician',tech:['tn','tl','ts'],P:[['o1','cn','cd','cx'],['o2','dn','dd','dx'],['o3','en','ed','ex']]},
+RH=[['date',2],['no',2],['client',1],['con',1],['proj',1],['loc',1]];
+/* automatic columns: when a reading changes, the calculated cells of that row are filled in (they can still be typed over) */
+const num=v=>{const x=parseFloat(String(v??'').replace(',','.'));return isNaN(x)?null:x},fx=(x,n)=>x==null||!isFinite(x)?'':x.toFixed(n);
+const CALC={
+ plt:{in:[1,2,3,4,6],dep:['nwt','cint','tmin'],f:(r,d)=>{const v=[1,2,3,4].map(i=>num(r[i])).filter(x=>x!=null),mn=v.length?Math.min(...v):null,nom=num(r[6])??num(d.nwt),yrs=num(d.cint),tm=num(d.tmin),
+   loss=mn!=null&&nom!=null?nom-mn:null,cr=loss!=null&&yrs>0?loss/yrs:null,life=cr>0&&mn!=null&&tm!=null?Math.max(0,(mn-tm)/cr):null;
+   return{5:fx(mn,2),7:fx(loss,2),8:loss!=null&&nom>0?fx(loss/nom*100,1):'',9:fx(cr,3),10:life!=null?fx(life,1):cr===0&&mn!=null&&tm!=null?'n/a':''}}},
+ tsf:{in:[2,3],dep:[],f:r=>{const a=num(r[2]),b=num(r[3]);return{4:a!=null&&b!=null?fx((a+b)/2,1):a!=null?fx(a,1):b!=null?fx(b,1):''}}},
+ cap:{in:[1],dep:[],f:r=>{const a=num(r[1]);return{2:a!=null?fx(a/1000,3):''}}},
+ tape:{in:[4,5,7],dep:[],f:r=>{const m=num(r[4]),t=num(r[5]),tol=num(r[7]),dv=m!=null&&t!=null?t-m:null;return{6:fx(dv,1),8:dv!=null&&tol!=null?(Math.abs(dv)<=Math.abs(tol)?'Pass':'Fail'):''}}},
+ det:{in:[3,4,6],dep:[],f:r=>{const m=num(r[3]),t=num(r[4]),tol=num(r[6]),dv=m!=null&&t!=null?t-m:null;return{5:fx(dv,2),7:dv!=null&&tol!=null?(Math.abs(dv)<=Math.abs(tol)?'Pass':'Fail'):''}}}};
+
+/* v78 helpers: sign-off blocks, money maths and extra automatic columns */
+const SXF=(lead,o1,o2,o3,nm,lv)=>[['td',lead],['tn',nm||'Name'],['tl',lv||'Designation'],['ts','Signature'],['o1','Sign-off column 1',o1],['cn','Name'],['cd','Date'],['cx','Signature'],['o2','Sign-off column 2',o2],['dn','Name'],['dd','Date'],['dx','Signature'],['o3','Sign-off column 3',o3],['en','Name'],['ed','Date'],['ex','Signature']],
+SXS=(lead,th)=>({k:'sx',leadL:lead,lead:'td',th,tech:['tn','tl','ts'],P:[['o1','cn','cd','cx'],['o2','dn','dd','dx'],['o3','en','ed','ex']]}),
+RHD=[['date','Report date'],['no','Report number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location']],
+NR=(n,w)=>Array.from({length:n},(_,i)=>[String(i+1),...Array(w-1).fill('')]),
+mon=v=>{const x=parseFloat(String(v??'').replace(/,/g,''));return isNaN(x)?null:x},
+fm=n=>n==null?'':n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),
+hm=v=>{const m=String(v||'').trim().match(/^(\d{1,2})(?:[:.hH]?(\d{2}))?$/);return m?(+m[1])*60+(+(m[2]||0)):null};
+Object.assign(CALC,{
+ crew:{in:[3,4],dep:[],f:r=>{const a=hm(r[3]),b=hm(r[4]);return{5:a!=null&&b!=null?fx(((b-a+1440)%1440)/60,1):''}}},
+ inv:{in:[0,3],postIn:[4],dep:[],f:r=>{const q=mon(r[0]),p=mon(r[3]);return{4:q!=null&&p!=null?fm(q*p):''}},
+  post:d=>{const R=d.items||[],any=R.some(r=>mon(r[4])!=null),s=R.reduce((a,r)=>a+(mon(r[4])||0),0);return any?{tot:fm(s),vat:fm(s*.075),grand:fm(s*1.075)}:{tot:'',vat:'',grand:''}}},
+ exp:{in:[],postIn:[5],dep:['adv'],f:()=>({}),
+  post:d=>{const R=d.lines||[],any=R.some(r=>mon(r[5])!=null),s=R.reduce((a,r)=>a+(mon(r[5])||0),0);return any?{tot:fm(s),due:fm(s-(mon(d.adv)||0))}:{tot:'',due:''}}}});
+
+function calcPost(doc,C){if(!C.post)return;Object.entries(C.post(doc.d)).forEach(([k,v])=>{doc.d[k]=v;const el=document.querySelector(`[data-ed="f:${k}"]`);if(el&&el!==document.activeElement)el.textContent=v})}
+function calcRow(doc,S,C,ri){const r=doc.d[S.key][ri],out=C.f(r,doc.d),tr=document.querySelector(`tr[data-rr="${S.key}:${ri}"]`);
+ Object.entries(out).forEach(([i,val])=>{r[i]=val;const td=tr&&tr.children[i];if(td&&td!==document.activeElement)td.textContent=val});calcPost(doc,C)}
+function runCalc(el){const doc=cur,S=TPL[doc.t].S.find(s=>s.key===el.dataset.key),C=S&&S.calc&&CALC[S.calc],ci=+el.dataset.ci;if(!C)return;if(C.in.includes(ci))calcRow(doc,S,C,+el.dataset.ri);else if(C.postIn&&C.postIn.includes(ci))calcPost(doc,C)}
+function calcAll(k){const doc=cur;TPL[doc.t].S.forEach(S=>{const C=S.calc&&CALC[S.calc];if(C&&C.dep.includes(k)){const R=doc.d[S.key];if(R.length)R.forEach((_,ri)=>calcRow(doc,S,C,ri));else calcPost(doc,C)}})}
+
+const IPR=[
+['pu','1. PURPOSE','This procedure sets out how the examination is to be carried out so that results are consistent, repeatable and traceable to the applicable code and client specification.'],
+['sc','2. SCOPE','\u2022 Applies to the items, welds and locations named in the document control block above.\n\u2022 Covers surface preparation, equipment set-up, examination, evaluation and reporting.'],
+['rf','3. REFERENCES','\u2022 Applicable code / standard: as stated in the document control block.\n\u2022 Client specification and project quality plan.\n\u2022 Company quality manual and NDT written practice.'],
+['rs','4. RESPONSIBILITIES','\u2022 NDT Technician: carries out the examination and records the results.\n\u2022 Level II / III: reviews and interprets results, approves reports.\n\u2022 Project Manager: ensures resources and access are provided.'],
+['eq','5. EQUIPMENT AND MATERIALS','\u2022 Instrument, probes / consumables and accessories as listed on the examination report.\n\u2022 All equipment must be within its calibration period.\n\u2022 Reference blocks and calibration standards traceable to a recognised standard.'],
+['pq','6. PERSONNEL QUALIFICATION','Personnel performing the examination shall be qualified and certified in accordance with the company written practice (ISO 9712 / ASNT SNT-TC-1A or as required by the client).'],
+['pr','7. PROCEDURE','\u2022 Confirm the item, location and permit to work, and prepare the surface for examination.\n\u2022 Calibrate and set up the equipment; record the settings.\n\u2022 Carry out the examination over the full area and record all relevant indications.\n\u2022 Verify the calibration at the end of the shift or after any change of set-up.'],
+['ac','8. ACCEPTANCE CRITERIA','Indications shall be evaluated against the acceptance standard named in the document control block. Non-conformances shall be reported on a Non-Conformance Report.'],
+['rp','9. REPORTING AND RECORDS','\u2022 A report is issued for each examination, signed by the technician and reviewed by the Level II / III.\n\u2022 Records are kept for the period required by the client and the code.'],
+['hs','10. HEALTH, SAFETY AND ENVIRONMENT','\u2022 Follow the site permit-to-work system and wear the required PPE.\n\u2022 Report any unsafe condition and stop work if the task cannot be done safely.']];
 const SIGN=(t,p,n)=>({k:'sg',t,n:4,f:[p+'n',p+'d',p+'t',p+'s']});
 const TPL={
 jcf:{n:'Job Completion Form',d:'Client sign-off with satisfaction ratings',no:'Form No. 06-01-F9 Rev: 01',
@@ -84,6 +132,194 @@ F:mk([['sub','Sub-title','STUDENTS PRACTICE REPORT'],['cand','Candidate\'s name'
 S:[{k:'ps',f:'sub',b:1,al:'center',gap:2},{k:'g',n:1,f:['cand','date','spec','len','jt','eq','wt','li','loc']},{k:'nt',x:'Sketch showing weld details: (use additional sheets if required)'},{k:'sk',lab:'Weld Cap'},{k:'sk',lab:'Weld Root'},
 {k:'tb',t:'Summary of defects',key:'def',rmin:16,c:[['Sl. no.',1],['ID (mm)',1.4],['OD (mm)',1.4],['Thickness (mm)',2],['Types of defect',3],['Orientation',2],['Remark',2]],rows:[["A", "", "", "", "", "", ""], ["", "", "", "", "", "", ""], ["B", "", "", "", "", "", ""], ["", "", "", "", "", "", ""], ["A", "", "", "", "", "", ""], ["", "", "", "", "", "", ""], ["B", "", "", "", "", "", ""], ["", "", "", "", "", "", ""]]},
 {k:'tx',t:'Comments',f:'rem'},{k:'g',n:3,f:['chk','qual','sd']}]},
+
+/* ===== v77: NDT, procedure and tank-calibration templates ===== */
+plt:{n:'Pipeline UT Thickness Report',d:'Readings at 12, 3, 6 and 9 o’clock with wall loss and corrosion rate',no:'',hd:1,
+F:mk([...RC,['line','Line / pipeline no.'],['svc','Service / fluid'],['od','Pipe OD'],['sch','Schedule / grade'],['mat','Material'],['nwt','Nominal wall thickness (mm)'],['tmin','Minimum required thickness (mm)'],['cint','Years in service / interval (yr)'],['code','Code / specification'],['proc','NDE procedure'],
+['eq','Instrument','Sonatest D-10+'],['ser','Instrument serial no.'],['prb','Probe (type / frequency)'],['blk','Calibration block','Step wedge'],['cpl','Couplant'],['tmp','Surface temperature','Ambient'],['surf','Surface condition'],['cdt','Calibration date'],['rem','Remarks'],...RS]),
+S:[{k:'g',n:4,f:[...RH,['line',1],['svc',1],['od',1],['sch',1],['mat',2],['nwt',2]]},
+{k:'g',n:4,t:'Instrument and calibration',f:['eq','ser','prb','blk','cpl','tmp','surf','cdt']},
+{k:'g',n:4,t:'Acceptance basis',f:['tmin','cint','code','proc']},
+{k:'nt',x:'Wall loss = nominal − minimum reading. Corrosion rate (mm/yr) = wall loss ÷ years in service. Remaining life (yr) = (minimum reading − minimum required) ÷ corrosion rate.'},
+{k:'tb',t:'Thickness readings (mm), clock positions 12, 3, 6 and 9',key:'rd',calc:'plt',c:[['TML / line',2.6],['Pos. 12',1.25],['Pos. 3',1.25],['Pos. 6',1.25],['Pos. 9',1.25],['Min. reading',1.4],['Nominal (mm)',1.4],['Wall loss (mm)',1.4],['Wall loss (%)',1.3],['Corrosion rate (mm/yr)',1.6],['Remaining life (yr)',1.5],['Remarks',2]],rows:[['','','','','','','','','','','',''],['','','','','','','','','','','',''],['','','','','','','','','','','',''],['','','','','','','','','','','','']]},
+{k:'tx',t:'Remarks',f:'rem'},RSX]},
+
+pt:{n:'Liquid Penetrant Examination Report',d:'PT examination: consumables, process times and accept / reject results',no:'',hd:1,
+F:mk([...RC,['code','Code / specification'],['cs','Client specification'],['acc','Acceptance standard'],['proc','NDE procedure'],['mat','Material'],['thk','Thickness (mm)'],['surf','Surface condition','As welded'],
+['lit','Lighting','Natural; light meter > 1000 lux'],['tmp','Part temperature','Ambient'],['ptype','Penetrant type / method','Type II, Method C (visible, solvent removable)'],['pre','Pre-cleaning','Wire brush and solvent'],
+['cln','Cleaner: manufacturer / model'],['cb','Cleaner: batch no.'],['pen','Penetrant: manufacturer / model'],['pb','Penetrant: batch no.'],['rmv','Remover: manufacturer / model'],['rb','Remover: batch no.'],['dev','Developer: manufacturer / model'],['db','Developer: batch no.'],
+['dw','Penetrant dwell time','10 min'],['rmm','Excess penetrant removal','Solvent-dampened lint-free cloth'],['dt','Developer time','10 min'],['dwg','Engineering dwg no.'],['wps','WPS no.'],['jt','Joint / weld type'],['item','Item inspected'],['rem','Remarks'],...RS]),
+S:[{k:'g',n:4,f:[...RH,['code',1],['cs',1],['acc',1],['proc',1],['mat',1],['thk',1],['surf',2]]},
+{k:'ck',t:'Examination stage',key:'stg',o:['As welded','Before PWHT','After PWHT','After hydro test','Other'],df:[]},
+{k:'g',n:4,t:'Conditions',f:['lit','tmp','ptype','pre']},
+{k:'g',n:4,t:'Consumables',f:['cln','cb','pen','pb','rmv','rb','dev','db']},
+{k:'g',n:4,t:'Process',f:['dw','rmm','dt']},
+{k:'g',n:4,t:'Part / weld examined',f:['dwg','wps','jt','item']},
+{k:'tb',t:'Examination results',key:'res',c:[['Item',3],['Joint no.',2],['Welder ID',3],['Indication',1.5],['Accept',1.5],['Reject',1.5],['Comment',1.5]],rows:[['','','','','','','']]},
+{k:'tx',t:'Remarks',f:'rem'},RSX]},
+
+cal:{n:'UT Equipment Calibration Record',d:'Instrument, probe, calibration block, couplant and pre / post-shift checks',no:'',hd:1,
+F:mk([['date','Record date'],['no','Record number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],['proc','NDE procedure'],['code','Code / specification'],
+['eq','Instrument','Sonatest D-10+'],['ser','Instrument serial no.'],['cdue','Instrument calibration due'],['ccn','Calibration certificate no.'],
+['prb','Probe type'],['pser','Probe serial no.'],['pmf','Probe manufacturer'],['wdg','Wedge / shoe no.'],['pf','Frequency (MHz)'],['pa','Nominal angle (deg)'],['psz','Crystal size (mm)'],['pcd','Probe check date'],
+['blk','Calibration block','IIW V1 (Type 1)'],['bid','Block ID / serial no.'],['bmt','Block material','Carbon steel'],['cpl','Couplant'],['cpb','Couplant batch no.'],['tmp','Surface temperature','Ambient'],['bcn','Block certificate no.'],['bth','Block thickness (mm)'],['rem','Remarks'],...RS]),
+S:[{k:'g',n:4,f:[...RH,['proc',2],['code',2]]},
+{k:'g',n:4,t:'Instrument',f:['eq','ser','cdue','ccn']},
+{k:'g',n:4,t:'Probe',f:['prb','pser','pmf','wdg','pf','pa','psz','pcd']},
+{k:'g',n:4,t:'Calibration block and couplant',f:['blk','bid','bmt','cpl','cpb','tmp','bcn','bth']},
+{k:'tb',t:'Calibration checks',key:'chk',c:[['Check',3.2],['Tolerance',2.2],['Pre-shift reading',1.8],['Post-shift reading',1.8],['Accept',1.3],['Reject',1.3],['Comment',2]],rows:[['Range / time-base calibration','Per procedure','','','','',''],['Beam index (probe index point)','Per procedure','','','','',''],['Beam angle','Per procedure','','','','',''],['Reference sensitivity (dB)','Per procedure','','','','',''],['Horizontal (time-base) linearity','Per procedure','','','','',''],['Amplitude / gain control linearity','Per procedure','','','','',''],['Resolution / dead zone','Per procedure','','','','','']]},
+{k:'tb',t:'Shift verification log',key:'log',c:[['Date',1.6],['Time',1.2],['Technician',2.2],['Job / weld ref.',2.4],['Pre-shift check',1.6],['Post-shift check',1.6],['Remarks',2.2]],rows:[['','','','','','',''],['','','','','','',''],['','','','','','','']]},
+{k:'tx',t:'Remarks',f:'rem'},RSX]},
+
+ncr:{n:'Non-Conformance Report',d:'Finding, location, reference clause, disposition and sign-off',no:'',hd:1,
+F:mk([['date','NCR date'],['no','NCR number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],
+['dwg','Drawing / document no.'],['wps','WPS no.'],['item','Item / weld no.'],['pos','Position on item'],['rdoc','Reference document'],['rcl','Reference clause'],['disc','Discipline'],['rb','Raised by'],
+['find','Description of non-conformance'],['rc','Root cause'],['dsp','Disposition / instruction'],['ca','Corrective action'],['due','Action due date'],['cdate','Closure date'],['ver','Verification of closure'],
+['td','Date raised'],['tn','Name'],['tl','Designation'],['ts','Signature'],['o1','Sign-off column 1','CLIENT'],['cn','Name'],['cd','Date'],['cx','Signature'],['o2','Sign-off column 2','QA / QC'],['dn','Name'],['dd','Date'],['dx','Signature'],['o3','Sign-off column 3','CLOSE-OUT'],['en','Name'],['ed','Date'],['ex','Signature']]),
+S:[{k:'g',n:4,f:[...RH]},
+{k:'g',n:4,t:'Where it was found',f:['dwg','wps','item','pos','rdoc','rcl','disc','rb']},
+{k:'ck',t:'Severity',key:'sev',o:['Minor','Major','Critical'],df:[]},
+{k:'tx',t:'Finding',f:'find',mh:60},{k:'tx',t:'Root cause',f:'rc',mh:60},
+{k:'ck',t:'Disposition',key:'dsk',o:['Accept as is','Repair','Rework','Reject','Concession'],df:[]},
+{k:'tx',t:'Disposition / instruction',f:'dsp',mh:60},{k:'tx',t:'Corrective action',f:'ca',mh:60},
+{k:'g',n:4,t:'Closure',f:[['due',2],['cdate',2]]},
+{k:'ck',t:'Status',key:'sts',o:['Open','Closed'],df:[0]},
+{k:'tx',t:'Verification of closure',f:'ver',mh:60},
+{k:'sx',leadL:'Date raised',lead:'td',th:'Raised by (DGSL)',tech:['tn','tl','ts'],P:[['o1','cn','cd','cx'],['o2','dn','dd','dx'],['o3','en','ed','ex']]}]},
+
+ipr:{n:'Inspection Procedure / Work Instruction',d:'Numbered procedure with document control, revision history and approval',no:'',gen:1,tsz:15,tag:"Non-Destructive Testing, Coating inspection, Welding Inspection, Labor Supply, Equipment leasing/supply, Training / Consultancy",foot:1,
+F:mk([['pno','Procedure no.'],['rev','Revision','0'],['date','Date'],['proj','Project / client'],['meth','Method / technique'],['code','Applicable code'],['prep','Prepared by'],['appr','Approved by'],
+...IPR.flatMap(([k,h,t])=>[['h'+k,'Heading '+h.split('.')[0],h],['b'+k,'Text '+h.split('.')[0],t]]),
+['pn','Prepared by'],['psg','Signature'],['an','Approved by'],['asg','Signature']]),
+S:[{k:'g',n:2,t:'Document control',f:['pno','rev','date','proj','meth','code','prep','appr']},
+...IPR.flatMap(([k])=>[{k:'ps',f:'h'+k,b:1,u:1,sz:10.5,gap:4},{k:'ps',f:'b'+k,gap:10}]),
+{k:'tb',t:'Revision history',key:'rv',rmin:20,c:[['Rev.',1],['Date',1.6],['Description of change',5],['Prepared',2],['Approved',2]],rows:[['0','','Initial issue','','']]},
+{k:'g',n:2,t:'Approval',f:['pn','psg','an','asg']}]},
+
+tcc:{n:'Tank Calibration Certificate',d:'Horizontal and vertical tanks, to API MPMS practice, with capacity table',no:'',hd:1,
+F:mk([['date','Date of issue'],['no','Certificate number'],['client','Client / owner'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],
+['tno','Tank number'],['prod','Product / service'],['cap','Nominal capacity'],['mfr','Tank manufacturer'],['std','Calibration standard','API MPMS Ch. 2.2A (vertical) / Ch. 2.2E (horizontal)'],['cdt','Calibration date'],['due','Next calibration due'],['ref','Reference temperature','15 °C'],
+['dia','Diameter (mm)'],['len','Length / height (mm)'],['hdt','Head type (horizontal)'],['ght','Reference gauge height (mm)'],['dpt','Datum plate / dip point'],['sfc','Safe fill capacity'],['wt','Shell plate thickness (mm)'],['bot','Bottom type'],
+['tp','Strapping tape no.'],['tcn','Tape certificate no.'],['det','DET / thermometer no.'],['dcn','DET certificate no.'],['rem','Remarks'],...RS]),
+S:[{k:'g',n:4,f:[...RH,['tno',1],['prod',1],['cap',1],['mfr',1]]},
+{k:'ck',t:'Tank type',key:'ttp',o:['Horizontal cylindrical','Vertical cylindrical','Other'],df:[]},
+{k:'ck',t:'Calibration method',key:'cmt',o:['Manual strapping','Optical reference line','Electro-optical ranging','Liquid calibration'],df:[]},
+{k:'g',n:4,t:'Calibration details',f:['std','cdt','due','ref']},
+{k:'g',n:4,t:'Tank dimensions',f:['dia','len','hdt','ght','dpt','sfc','wt','bot']},
+{k:'g',n:4,t:'Equipment and traceability',f:['tp','tcn','det','dcn']},
+{k:'nt',x:'Volumes are stated at the reference temperature and apply only to the tank as measured on the calibration date.'},
+{k:'tb',t:'Capacity table',key:'ctb',calc:'cap',c:[['Dip / level (mm)',2],['Volume (litres)',2.6],['Volume (m³)',2.2],['Remarks',2.2]],rows:[['','','',''],['','','',''],['','','',''],['','','',''],['','','',''],['','','','']]},
+{k:'tx',t:'Remarks',f:'rem'},RSX]},
+
+tsf:{n:'Tank Strapping Field Sheet',d:'Circumference readings per course with plate thickness and temperature',no:'',hd:1,
+F:mk([['date','Strapping date'],['no','Sheet number'],['client','Client / owner'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],
+['tno','Tank number'],['prod','Product / service'],['dia','Nominal diameter (mm)'],['ncr','Number of courses'],['ght','Reference gauge height (mm)'],['dpt','Datum plate height (mm)'],['bt','Bottom plate thickness (mm)'],['wx','Weather / wind'],['rf','Roof type'],['ins','Insulation'],
+['tp','Strapping tape no.'],['tcn','Tape certificate no.'],['ten','Applied tension (N)'],['det','DET / thermometer no.'],['amb','Ambient temperature (°C)'],['stm','Shell temperature (°C)'],['rem','Remarks'],...RS]),
+S:[{k:'g',n:4,f:[...RH,['tno',1],['prod',1],['dia',1],['ncr',1]]},
+{k:'ck',t:'Tank type',key:'ttp',o:['Vertical cylindrical','Horizontal cylindrical','Other'],df:[0]},
+{k:'g',n:4,t:'Datum and conditions',f:['ght','dpt','bt','wx','rf','ins','amb','stm']},
+{k:'g',n:4,t:'Strapping equipment',f:['tp','tcn','ten','det']},
+{k:'tb',t:'Circumference readings per course',key:'str',calc:'tsf',c:[['Course',1],['Course height (mm)',1.8],['Circ. 1 (mm)',2],['Circ. 2 (mm)',2],['Mean circ. (mm)',2],['Plate thk (mm)',1.6],['Shell temp (°C)',1.5],['Remarks',2]],rows:[['1','','','','','','',''],['2','','','','','','',''],['3','','','','','','',''],['4','','','','','','',''],['5','','','','','','',''],['6','','','','','','','']]},
+{k:'tb',t:'Deadwood and appurtenances',key:'dwd',c:[['Item',3],['Location / course',2],['Size L×W×H (mm)',3],['Volume (litres)',2],['Remarks',2]],rows:[['','','','',''],['','','','',''],['','','','','']]},
+{k:'tx',t:'Remarks',f:'rem'},RSX]},
+
+ctv:{n:'Calibration Tape and DET Verification Record',d:'Traceability sheet for strapping tapes and electronic thermometers',no:'',hd:1,
+F:mk([['date','Verification date'],['no','Record number'],['client','Client / owner'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],
+['mtp','Reference master tape no.'],['mcn','Master tape certificate no.'],['mlb','Calibration laboratory'],['ten','Applied tension (N)'],['vt','Verification temperature (°C)'],
+['rth','Reference thermometer no.'],['rcn','Reference thermometer cert. no.'],['proc','Verification procedure'],['rem','Remarks'],...RS]),
+S:[{k:'g',n:4,f:[...RH]},
+{k:'g',n:4,t:'Reference standards',f:['mtp','mcn','mlb','ten','vt','rth','rcn','proc']},
+{k:'nt',x:'Deviation = unit reading − reference reading. Result is filled in automatically once a tolerance is entered.'},
+{k:'tb',t:'Strapping tapes',key:'tpe',calc:'tape',c:[['Tape ID',1.6],['Serial no.',1.6],['Length (m)',1.2],['Certificate no.',1.8],['Master reading (mm)',1.7],['Tape reading (mm)',1.7],['Deviation (mm)',1.5],['Tolerance (mm)',1.4],['Result',1.2],['Next due',1.5]],rows:[['','','','','','','','','',''],['','','','','','','','','',''],['','','','','','','','','','']]},
+{k:'tb',t:'Electronic thermometers (DET)',key:'dtt',calc:'det',c:[['DET ID',1.6],['Serial no.',1.6],['Certificate no.',1.8],['Reference (°C)',1.5],['Unit reading (°C)',1.6],['Deviation (°C)',1.5],['Tolerance (°C)',1.4],['Result',1.2],['Next due',1.5]],rows:[['','','','','','','','',''],['','','','','','','','',''],['','','','','','','','','']]},
+{k:'tx',t:'Remarks',f:'rem'},RSX]},
+
+/* ===== v78: HSE, site and business templates ===== */
+tbt:{n:'Toolbox Talk Record',d:'Topic, key points and attendee list with signatures',no:'',hd:1,
+F:mk([['date','Talk date'],['no','Record number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],['topic','Topic'],['pres','Presented by'],['time','Start time'],['dur','Duration (min)'],['pts','Key points discussed'],['haz','Hazards and controls covered'],['qs','Questions / actions raised'],...SXF('Date','SITE SUPERVISOR','HSE OFFICER','CLIENT')]),
+S:[{k:'g',n:4,f:[...RH,['topic',2],['pres',2],['time',2],['dur',2]]},
+{k:'ck',t:'Topic category',key:'tbc',o:['At height','Hot work','Manual handling','PPE','Other'],df:[]},
+{k:'tx',t:'Key points discussed',f:'pts',mh:60},{k:'tx',t:'Hazards and controls covered',f:'haz',mh:48},{k:'tx',t:'Questions / actions raised',f:'qs',mh:40},
+{k:'tb',t:'Attendees',key:'att',c:[['No.',.8],['Name',3.4],['Company / designation',2.8],['Signature',2.6]],rmin:22,rows:NR(10,4)},
+SXS('Date','Presenter')]},
+
+jsa:{n:'Job Safety Analysis (JSA)',d:'Job steps, hazards, risk ratings and control measures',no:'',hd:1,
+F:mk([['date','Date'],['no','JSA number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],['job','Job / task description'],['area','Work area'],['perm','Permit no.'],['tlr','Team leader'],['ppe','PPE required'],['emg','Emergency contact / muster point'],['rem','Remarks'],...SXF('Date','SUPERVISOR','HSE OFFICER','CLIENT')]),
+S:[{k:'g',n:4,f:[...RH,['job',2],['area',2],['perm',1],['tlr',1],['ppe',2],['emg',4]]},
+{k:'nt',x:'Risk rating: L = Low, M = Medium, H = High (likelihood x severity). Re-rate after controls are applied.'},
+{k:'tb',t:'Job steps, hazards and controls',key:'jsa',c:[['No.',.8],['Job step',3],['Hazards',3],['Risk before',1.3],['Control measures',3.6],['Risk after',1.3],['Responsible',1.8]],rmin:30,rows:NR(6,7)},
+{k:'ck',t:'Overall residual risk',key:'rsk',o:['Low','Medium','High'],df:[]},
+{k:'tx',t:'Remarks',f:'rem'},SXS('Date','Prepared by')]},
+
+ptw:{n:'Permit to Work / Hot Work Permit',d:'Permit with validity times, precautions, extensions and sign-offs',no:'',hd:1,
+F:mk([['date','Date of issue'],['no','Permit number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],['desc','Description of work'],['wloc','Exact work location'],['eqp','Equipment / tools'],['iss','Issued to (contractor)'],['nop','Number of personnel'],['vf','Valid from (date / time)'],['vt','Valid to (date / time)'],['hz','Hazards identified'],['ppe','PPE required'],['gas','Gas test result / time'],['fw','Fire watch name'],['hb','Handback remarks'],...SXF('Date','PERFORMER','HSE / SAFETY','CLIENT / AREA')]),
+S:[{k:'g',n:4,f:[...RH,['desc',4],['wloc',2],['eqp',2],['iss',2],['nop',2],['vf',2],['vt',2],['hz',2],['ppe',2],['gas',2],['fw',2]]},
+{k:'ck',t:'Permit type',key:'ptt',o:['Hot work','Cold work','Confined','At height','Electrical','Radiography'],df:[]},
+{k:'ck',t:'Precautions confirmed',key:'pcn',o:['Area cleared','Extinguisher','Fire watch','Gas tested','Isolated','Barricaded'],df:[]},
+{k:'tb',t:'Extension / revalidation',key:'ext',c:[['Date',1.6],['From',1.4],['To',1.4],['Extended by',2.4],['Accepted by',2.4]],rows:[['','','','',''],['','','','','']]},
+{k:'tx',t:'Handback remarks',f:'hb'},SXS('Date','Permit issuer')]},
+
+inc:{n:'Incident / Near-Miss Report',d:'What happened, immediate action, root cause and corrective actions',no:'',hd:1,
+F:mk([['date','Report date'],['no','Report number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],['idt','Date / time of incident'],['ipl','Exact location'],['inv','Person(s) involved'],['wit','Witnesses'],['eq','Equipment involved'],['rto','Reported to'],['what','What happened'],['imm','Immediate action taken'],['inj','Injuries / damage'],['rc','Root cause'],...SXF('Date','SITE SUPERVISOR','HSE OFFICER','CLIENT')]),
+S:[{k:'g',n:4,f:[...RH,['idt',2],['ipl',2],['inv',2],['wit',2],['eq',2],['rto',2]]},
+{k:'ck',t:'Type',key:'ity',o:['Near miss','First aid','Medical','Lost time','Property','Environment'],df:[]},
+{k:'ck',t:'Severity',key:'isv',o:['Low','Medium','High','Critical'],df:[]},
+{k:'tx',t:'What happened',f:'what',mh:70},{k:'tx',t:'Immediate action taken',f:'imm',mh:45},{k:'tx',t:'Injuries / damage',f:'inj',mh:36},{k:'tx',t:'Root cause',f:'rc',mh:45},
+{k:'tb',t:'Corrective and preventive actions',key:'cpa',c:[['No.',.8],['Action',5],['Owner',2],['Due date',1.8],['Status',1.5]],rmin:22,rows:NR(3,5)},
+SXS('Date','Reported by')]},
+
+pjs:{n:'Pre-Job Safety Checklist',d:'Mark Yes, No or N/A for each safety check before work starts',no:'',hd:1,
+F:mk([['date','Date'],['no','Checklist number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],['job','Job description'],['perm','Permit no.'],['sup','Supervisor'],['crew','Number in crew'],['rem','Remarks'],...SXF('Date','SUPERVISOR','HSE OFFICER','CLIENT')]),
+S:[{k:'g',n:4,f:[...RH,['job',2],['perm',1],['sup',1],['crew',4]]},
+{k:'nt',x:'Mark Yes, No or N/A with x. Every "No" must be corrected before work starts.'},
+{k:'tb',t:'Checklist',key:'chk',c:[['No.',.8],['Item',6],['Yes',1],['No',1],['N/A',1],['Comment',2.6]],rmin:20,rows:[['1','Permit to work issued and displayed','','','',''],['2','JSA completed and understood by the whole crew','','','',''],['3','Toolbox talk held and attendance recorded','','','',''],['4','Crew trained, certified and fit for the task','','','',''],['5','Correct PPE worn (hard hat, safety shoes, coverall, gloves, glasses)','','','',''],['6','Work area inspected, barricaded and signposted','','','',''],['7','Equipment inspected, calibrated and in good condition','','','',''],['8','Electrical equipment and cables in safe condition','','','',''],['9','Fire extinguisher available and in date','','','',''],['10','First aid kit and emergency contacts available','','','',''],['11','Muster point and emergency route known to all','','','',''],['12','Access, lifting and working-at-height arrangements safe','','','',''],['13','Hot work, radiography or confined-space controls in place where applicable','','','',''],['14','Housekeeping: area clear of hazards and waste','','','','']]},
+{k:'tx',t:'Remarks',f:'rem'},SXS('Date','Checked by')]},
+
+dsr:{n:'Daily Site Report',d:'Work done, crew and hours, equipment, delays and plan for tomorrow',no:'',hd:1,
+F:mk([...RHD,['wx','Weather'],['hrs','Working hours'],['sup','Site supervisor'],['wo','Work order / PO no.'],['shf','Shift'],['done','Work done today'],['plan','Planned for tomorrow'],['dly','Delays / issues'],['hse','HSE observations'],...SXF('Date','CLIENT REP.','PROJECT MANAGER','HSE OFFICER')]),
+S:[{k:'g',n:4,f:[...RH,['wx',1],['hrs',1],['sup',2],['wo',2],['shf',2]]},
+{k:'tx',t:'Work done today',f:'done',mh:80},
+{k:'tb',t:'Crew',key:'crew',calc:'crew',c:[['No.',.8],['Name',3],['Role',2.4],['Time in',1.3],['Time out',1.3],['Hours',1.2]],rmin:20,rows:NR(5,6)},
+{k:'tb',t:'Equipment on site',key:'eqp',c:[['No.',.8],['Equipment',3.4],['ID / serial no.',2.2],['Hours used',1.4],['Status',1.8]],rmin:20,rows:NR(4,5)},
+{k:'tx',t:'Delays / issues',f:'dly',mh:45},{k:'tx',t:'HSE observations',f:'hse',mh:36},{k:'tx',t:'Planned for tomorrow',f:'plan',mh:45},
+SXS('Date','Prepared by')]},
+
+edn:{n:'Equipment Handover / Delivery Note',d:'Items, condition out and in, with handover signatures',no:'',hd:1,
+F:mk([['date','Date'],['no','Note number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],['from','From'],['to','Delivered to'],['po','PO / work order no.'],['veh','Vehicle / driver'],['rem','Remarks'],...SXF('Date','RECEIVED BY','DRIVER / CARRIER','WITNESS')]),
+S:[{k:'g',n:4,f:[...RH,['from',2],['to',2],['po',2],['veh',2]]},
+{k:'ck',t:'Movement type',key:'mvt',o:['Delivery','Handover','Return','Transfer'],df:[]},
+{k:'tb',t:'Items',key:'itm',c:[['No.',.8],['Description',4],['Serial / tag no.',2.4],['Qty',1],['Condition out',2],['Condition in',2]],rmin:22,rows:NR(8,6)},
+{k:'tx',t:'Remarks',f:'rem'},SXS('Date','Handed over by')]},
+
+mob:{n:'Mobilization Checklist',d:'People, equipment, documents and transport ready before leaving for site',no:'',hd:1,
+F:mk([['date','Mobilization date'],['no','Checklist number'],['client','Client'],['con','Contractor','DANHOLSEN GLOBAL SERVICES LIMITED'],['proj','Project name'],['loc','Location'],['sit','Site / destination'],['lead','Crew leader'],['wo','Work order / PO no.'],['dep','Planned departure'],['arr','Planned arrival'],['rem','Remarks'],...SXF('Date','PROJECT MANAGER','HSE OFFICER','CLIENT')]),
+S:[{k:'g',n:4,f:[...RH,['sit',2],['lead',2],['wo',1],['dep',1],['arr',2]]},
+{k:'nt',x:'Mark Done with x and enter the date. Anything not done must be explained under Remarks.'},
+{k:'tb',t:'Checklist',key:'mob',c:[['No.',.8],['Item',5],['Responsible',2],['Done',1],['Date',1.5],['Remarks',2.5]],rmin:20,rows:[['1','Work order / PO and scope confirmed','','','',''],['2','Crew list agreed and client notified','','','',''],['3','Personnel certificates valid (NDT level, safety, medical)','','','',''],['4','Site access permits and induction arranged','','','',''],['5','PPE issued to all crew','','','',''],['6','Instruments calibrated and certificates in date','','','',''],['7','Probes, cables, blocks and accessories checked','','','',''],['8','Consumables and couplant packed','','','',''],['9','Procedures, forms and report templates ready','','','',''],['10','Tools and spares packed','','','',''],['11','First aid kit and fire extinguisher packed','','','',''],['12','Vehicle inspected, fuelled and driver briefed','','','',''],['13','Accommodation and transport arranged','','','',''],['14','Communication and emergency contacts shared','','','',''],['15','Equipment loaded and checked against packing list','','','','']]},
+{k:'tx',t:'Remarks',f:'rem'},SXS('Date','Prepared by')]},
+
+mtg:{n:'Meeting Minutes',d:'Attendees, agenda, decisions and actions with owners and due dates',no:'',gen:1,tsz:15,tag:"Non-Destructive Testing, Coating inspection, Welding Inspection, Labor Supply, Equipment leasing/supply, Training / Consultancy",foot:1,
+F:mk([['mno','Reference no.'],['date','Date'],['proj','Project / client'],['time','Time'],['venue','Venue'],['chair','Chairperson'],['rec','Minutes taken by'],['next','Next meeting'],['agn','Agenda','1.\n2.\n3.'],['aob','Any other business'],['pn','Prepared by'],['psg','Signature'],['an','Approved by'],['asg','Signature']]),
+S:[{k:'g',n:2,t:'Meeting details',f:['mno','date','proj','time','venue','chair','rec','next']},
+{k:'tb',t:'Attendees',key:'att',rmin:20,c:[['No.',.8],['Name',3],['Company / role',3],['Present',1.4]],rows:NR(5,4)},
+{k:'ps',f:'agn',lead:'Agenda',gap:10,min:3},
+{k:'tb',t:'Discussion, decisions and actions',key:'dis',rmin:24,c:[['No.',.8],['Item discussed',3],['Decision / action',3.4],['Action by',1.8],['Due',1.4]],rows:NR(3,5)},
+{k:'ps',f:'aob',lead:'Any other business',gap:10,min:1},
+{k:'g',n:2,t:'Approval',f:['pn','psg','an','asg']}]},
+
+quo:{n:'Quotation',d:'Priced quotation with items, VAT, terms and client acceptance',no:'',gen:1,tsz:20,tag:"Non-Destructive Testing, Coating inspection, Welding Inspection, Labor Supply, Equipment leasing/supply, Training / Consultancy",foot:1,
+F:mk([['to','Quotation to'],['qno','Quotation no.'],['date','Date'],['vld','Valid until'],['ref','Subject / enquiry ref.'],['tot','Total (NGN)'],['vat','VAT 7.5% (NGN)'],['grand','Grand total (NGN)'],['words','Amount in words'],['terms','Terms','• This quotation is valid for the period stated above.\n• Payment terms: to be agreed.\n• Variations to the scope will be quoted separately.'],['an','Account name','Danholsen Global Service Limited'],['bn','Bank name','Premium Trust Bank'],['ac','Account number','0040018522'],['cn','Accepted by (name)'],['cd','Date'],['cs','Signature']]),
+S:[{k:'ps',f:'to',lead:'TO',min:3},{k:'g',n:2,f:[['qno',1],['date',1],['vld',1],['ref',1]]},
+{k:'tb',key:'items',calc:'inv',c:[['Qty',1],['Description',5],['UOM',1.4],['Rate (NGN)',2],['Amount (NGN)',2.2]],al:['center','left','center','right','right'],rows:[['','','','',''],['','','','',''],['','','','','']]},
+{k:'g',n:3,f:['tot','vat','grand']},{k:'g',n:1,f:['words']},{k:'ps',f:'terms',lead:'Terms',gap:8},
+{k:'g',n:3,t:'Bank details',f:['an','bn','ac']},{k:'g',n:3,t:'Client acceptance',f:['cn','cd','cs']}]},
+
+exp:{n:'Expense Claim',d:'Dated expense lines with receipts, total, advance and approvals',no:'',gen:1,tsz:20,tag:"Non-Destructive Testing, Coating inspection, Welding Inspection, Labor Supply, Equipment leasing/supply, Training / Consultancy",foot:1,
+F:mk([['emp','Employee name'],['dep','Department'],['cno','Claim no.'],['date','Claim date'],['per','Period covered'],['proj','Project / cost centre'],['pur','Purpose of claim'],['tot','Total claimed (NGN)'],['adv','Advance received (NGN)'],['due','Balance due (NGN)'],['pay','Payment details (bank / account no.)'],['cn','Claimant'],['cs','Signature'],['an','Approved by'],['asg','Signature'],['fn','Finance'],['fsg','Signature']]),
+S:[{k:'g',n:2,t:'Claim details',f:['emp','dep','cno','date','per','proj']},{k:'g',n:1,f:['pur']},
+{k:'tb',t:'Expenses',key:'lines',calc:'exp',rmin:20,c:[['No.',.8],['Date',1.6],['Description',4],['Category',2],['Receipt no.',1.6],['Amount (NGN)',2.2]],al:['center','center','left','left','center','right'],rows:NR(8,6)},
+{k:'g',n:3,f:['tot','adv','due']},{k:'g',n:1,f:['pay']},
+{k:'g',n:2,t:'Approval',f:['cn','cs','an','asg','fn','fsg']}]},
 };
 const secs=t=>TPL[t].S;
 docs.forEach(x=>{const T=TPL[x&&x.t];if(T&&x.d)Object.entries(T.F).forEach(([k,f])=>{if(x.d[k]===undefined)x.d[k]=f.df})});
@@ -92,7 +328,7 @@ const DG=window.DG_URI||'danholsen-full.png',MAXLG=6;
 let lib=LS('dw.lib',null),legacyLg=null;
 let sigs=LS('dw.sigs',[]),sgk=null,sigDef=LS('dw.sigdef',null),sigAuto=LS('dw.sigauto',false);
 const defSig=()=>sigs.find(x=>x.id===sigDef)||null,
- DS={trn:'ss',tsh:'as',mpi:'ts',ut:'ts'},   /* the Danholsen-side signature field of each template (the Job Completion Form is signed by the client) */
+ DS={trn:'ss',tsh:'as',mpi:'ts',ut:'ts',plt:'ts',pt:'ts',cal:'ts',ncr:'ts',tcc:'ts',tsf:'ts',ctv:'ts',tbt:'ts',jsa:'ts',ptw:'ts',inc:'ts',pjs:'ts',dsr:'ts',edn:'ts',mob:'ts'},   /* the Danholsen-side signature field of each template (the Job Completion Form is signed by the client) */
  sgName=(x,i)=>x.n||('Signature '+(i+1)),
  setDef=id=>{sigDef=id||null;SV('dw.sigdef',sigDef)},
  delSig=id=>{sigs=sigs.filter(x=>x.id!==id);SV('dw.sigs',sigs);if(sigDef===id)setDef(null)},
@@ -107,7 +343,7 @@ function newDoc(t){const T=TPL[t],d={};Object.entries(T.F).forEach(([k,f])=>d[k]
  return{id:uid(),t,title:T.n,d,a:{},lg:[{id:'dg',s:100}],u:Date.now(),b:JSON.stringify([T.n,d])}}
 
 /* ---------- A4 sheet renderer (mirrors the original Danholsen forms) ---------- */
-const ST={jcf:'jcf',trn:'trn',tsh:'tsh',mpi:'rep',ut:'rep',inv:'gen',ltr:'gen',trq:'gen',vpr:'gen'};
+const ST={jcf:'jcf',trn:'trn',tsh:'tsh',mpi:'rep',ut:'rep',inv:'gen',ltr:'gen',trq:'gen',vpr:'gen',plt:'rep',pt:'rep',cal:'rep',ncr:'rep',ipr:'gen',tcc:'rep',tsf:'rep',ctv:'rep',tbt:'rep',jsa:'rep',ptw:'rep',inc:'rep',pjs:'rep',dsr:'rep',edn:'rep',mob:'rep',mtg:'gen',quo:'gen',exp:'gen'};
 /* Reports: every label / heading / column title can be reworded and grid fields can be added or removed.
    The edits live on the document (doc.o text, doc.cf custom fields, doc.hide removed fields) and are merged
    into a copy of the template here, so the preview AND the PDF both read the same resolved template. */
@@ -242,8 +478,8 @@ function mountEditor(){const doc=cur,g=$('#stage'),b=$('#etb');act=null;zm=1;his
   else if(rf){pushH();const ks=(TPL[doc.t].S[+rf.dataset.restf].f||[]).map(x=>Array.isArray(x)?x[0]:x);doc.hide=(doc.hide||[]).filter(k=>!ks.includes(k));act=null;paint()}
   else done()};
  g.oninput=ev=>{const el=ev.target.closest('[data-ed]');if(!el)return;if(act&&!act.dirty){act.dirty=1;hist.push(act.pre||snap());if(hist.length>80)hist.shift();updUndo()}const id=el.dataset.ed,v=id[0]==='o'?el.textContent:el.innerText.replace(/\n$/,'');
-  if(id==='t'){doc.title=v;$('#ttl').value=v}else if(id[0]==='f')doc.d[id.slice(2)]=v;else if(id[0]==='o')(doc.o=doc.o||{})[id.slice(2)]=v;
-  else{const r=doc.d[el.dataset.key][+el.dataset.ri];r[+el.dataset.ci]=v;const tt=el.closest('tr').querySelector('[data-tot]');
+  if(id==='t'){doc.title=v;$('#ttl').value=v}else if(id[0]==='f'){doc.d[id.slice(2)]=v;calcAll(id.slice(2))}else if(id[0]==='o')(doc.o=doc.o||{})[id.slice(2)]=v;
+  else{const r=doc.d[el.dataset.key][+el.dataset.ri];r[+el.dataset.ci]=v;const tt=el.closest('tr').querySelector('[data-tot]');runCalc(el);
    if(tt&&tt!==el&&!r[+tt.dataset.ci])tt.textContent=r.filter(y=>/^[\u221A\u2713x]$/i.test(y)).length||''}
   doc.u=Date.now();queue()};
  g.onkeydown=ev=>{const el=ev.target.closest&&ev.target.closest('[data-ed]');if(!el)return;
@@ -280,7 +516,7 @@ if(window.visualViewport){const vv=visualViewport;let q=0;
  /* keep the edit bar at its normal on-screen size and glued to the very top of the screen (it only sits under the header while the header is still on screen), even while pinch-zoomed or with the keyboard open */
  const f=()=>{q=0;const b=$('#etb');if(!b)return;const s=vv.scale||1,de=document.documentElement,lw=de.clientWidth,lh=de.clientHeight;
   b.classList.toggle('vz',Math.abs(s-1)>.01);b.style.maxWidth='none';b.style.width=Math.min(vv.width>=900?760:560,vv.width-16)*s+'px';
-  const th=document.querySelector('.top'),hb=th?Math.max(0,Math.round(th.getBoundingClientRect().bottom)):0,eth=hb?hb+6:6;b.style.setProperty('--eth',(hb?hb+6:0)+'px');b.style.setProperty('--vs',String(1/s));b.style.setProperty('--vx',(vv.offsetLeft+vv.width/2-lw/2)+'px');b.style.setProperty('--vy',(Math.abs(s-1)>.01?vv.offsetTop-eth+6:vv.offsetTop)+'px')};
+  const th=document.querySelector('.top'),hb=th?Math.round(th.offsetHeight):0,eth=hb?hb+6:6;b.style.setProperty('--eth',(hb?hb+6:0)+'px');b.style.setProperty('--vs',String(1/s));b.style.setProperty('--vx',(vv.offsetLeft+vv.width/2-lw/2)+'px');b.style.setProperty('--vy',(Math.abs(s-1)>.01?vv.offsetTop-eth+6:vv.offsetTop)+'px')};
  let tq=0;const sch=()=>{if(!q)q=requestAnimationFrame(f);clearTimeout(tq);tq=setTimeout(f,140)};
  const calm=()=>Math.abs((vv.scale||1)-1)<=.01&&vv.offsetTop<2&&vv.offsetLeft<2;   /* ordinary page scrolling: nothing to re-measure, so the bar is left alone and cannot shake */
  vv.addEventListener('resize',sch);const sc2=()=>{if(!calm())sch()};vv.addEventListener('scroll',sc2);addEventListener('scroll',sc2,{passive:true});
@@ -483,7 +719,9 @@ let STQ=null;const LSCAP=5*1048576,MB=n=>(n/1048576).toFixed(n<10485760?1:0),SZ=
  lsBytes=()=>{let n=DWSTORE.bytes();try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);n+=(k.length+(localStorage.getItem(k)||'').length)*2}}catch{}return n},
  stMeter=()=>{const cap=STQ||LSCAP,u=lsBytes(),p=Math.min(100,u/cap*100),b=document.getElementById('stbar'),t=document.getElementById('sttx');if(b){b.style.width=Math.max(p,2)+'%';b.className=p>=90?'bad':p>=70?'mid':''}if(t)t.textContent=SZ(u)+' used'+(STQ?' - about '+SZ(STQ)+' available on this device':'')+(p>=70?'. Getting full: export a backup, then remove unused logos or documents.':'.')},
  stRefresh=()=>DWSTORE.quota().then(q=>{if(q&&q!==STQ){STQ=q;stMeter()}}),
- CHANGES=[['New templates: Invoice, Request Letter, Torquing Procedure for Piping Flanges and Visual Practice Report','Logo panel: a + Add logo button at the top jumps straight to adding and the panel is taller on computers','The floating edit bar no longer shakes while you scroll on a phone','Logo size: the logo panel now shows a live preview of the report header, so you can see each logo get smaller or bigger as you move the slider','"Clear saved logo" wording fixed for a single saved logo','Edit PDF and Send: after saving or sending a PDF a Done button takes you back to the home page','The top bar stays pinned while the document scrolls beneath it','Logos can be cropped before they are added, with a live preview of the report header','Logo size has the same slider as signatures (30 to 150%, 1% steps, presets); the header grows to fit an enlarged logo','Save in a document now makes the PDF and keeps a copy; the entry shows Saved with a download button, and deleting the document deletes its copy','Edit PDF now saves in place: your original PDF stays sharp and small, and only your changes are added (a picture-based save remains as a fallback and as an option)','Edit PDF: undo and redo, headings stay bold when edited, pages stored rotated work, scanned pages explain themselves','Saved logos can now be deleted one at a time or all at once, from Settings and from inside a document','Signatures: better paper removal for phone photos with shadows or tinted paper, and a checkerboard preview that shows the transparency','Logos and signatures and Message wording in Settings now open correctly','Documents, logos and signatures are stored in a much larger space, no longer limited to 5 MB; the storage meter shows the real room left','Light mode: the app background is slightly dimmer than the white cards','Edit PDF: open any PDF, tap a line of text to change it, add new text, and save a new PDF','Bottom menu is locked to the bottom edge of the screen on phones and tablets','Settings redesigned and reorganised','Version card with live update status and a dot on Settings when an update is ready','Restore points: the last 3 copies are kept automatically and before every import','Import shows exactly what will be added or updated before it runs','Storage meter, and a request to keep your data safe from automatic clean-up','Offline indicator, and the last backup-email result shown in Settings','Reset option for a clean start']];
+ CHANGES=[['New templates: HSE category (Toolbox Talk Record, Job Safety Analysis, Permit to Work / Hot Work Permit, Incident / Near-Miss Report, Pre-Job Safety Checklist), Daily Site Report, Equipment Handover / Delivery Note, Mobilization Checklist, Meeting Minutes, Quotation and Expense Claim','Phones: template categories sit side by side as tiles; the edit bar no longer slides or moves while you scroll or tap to edit','Home page: Continue editing now sits above the backup reminder','Quotation and Expense Claim work out amounts, VAT and totals for you'],
+ ['New templates: Pipeline UT Thickness Report, Liquid Penetrant Examination Report, UT Equipment Calibration Record, Non-Conformance Report, Inspection Procedure / Work Instruction, and a new Tank calibration category (Tank Calibration Certificate, Tank Strapping Field Sheet, Calibration Tape and DET Verification Record)','Thickness, strapping and verification tables now calculate wall loss, corrosion rate, mean circumference, deviation and pass / fail for you','New project card on the Files page is clearer in light and dark mode'],
+ ['New templates: Invoice, Request Letter, Torquing Procedure for Piping Flanges and Visual Practice Report','Logo panel: a + Add logo button at the top jumps straight to adding and the panel is taller on computers','The floating edit bar no longer shakes while you scroll on a phone','Logo size: the logo panel now shows a live preview of the report header, so you can see each logo get smaller or bigger as you move the slider','"Clear saved logo" wording fixed for a single saved logo','Edit PDF and Send: after saving or sending a PDF a Done button takes you back to the home page','The top bar stays pinned while the document scrolls beneath it','Logos can be cropped before they are added, with a live preview of the report header','Logo size has the same slider as signatures (30 to 150%, 1% steps, presets); the header grows to fit an enlarged logo','Save in a document now makes the PDF and keeps a copy; the entry shows Saved with a download button, and deleting the document deletes its copy','Edit PDF now saves in place: your original PDF stays sharp and small, and only your changes are added (a picture-based save remains as a fallback and as an option)','Edit PDF: undo and redo, headings stay bold when edited, pages stored rotated work, scanned pages explain themselves','Saved logos can now be deleted one at a time or all at once, from Settings and from inside a document','Signatures: better paper removal for phone photos with shadows or tinted paper, and a checkerboard preview that shows the transparency','Logos and signatures and Message wording in Settings now open correctly','Documents, logos and signatures are stored in a much larger space, no longer limited to 5 MB; the storage meter shows the real room left','Light mode: the app background is slightly dimmer than the white cards','Edit PDF: open any PDF, tap a line of text to change it, add new text, and save a new PDF','Bottom menu is locked to the bottom edge of the screen on phones and tablets','Settings redesigned and reorganised','Version card with live update status and a dot on Settings when an update is ready','Restore points: the last 3 copies are kept automatically and before every import','Import shows exactly what will be added or updated before it runs','Storage meter, and a request to keep your data safe from automatic clean-up','Offline indicator, and the last backup-email result shown in Settings','Reset option for a clean start']];
 async function snapList(){try{return(await idbGet('snaps'))||[]}catch{return[]}}
 async function snapTake(why){const json=bkJSON(),n=docs.length;try{if(!docs.length&&!lib.length&&!sigs.length)return;const l=await snapList();l.unshift({at:Date.now(),why,n,json});const k=l.slice(0,3);await idbSet('snaps',k);SNAPS=k.map(({at,why,n})=>({at,why,n}));SV('dw.lastsnap',Date.now())}catch{}}
 async function snapRestore(i){const l=await snapList(),sn=l[i];if(!sn)return;
@@ -526,9 +764,11 @@ let hf='all';
 /* ---------- template categories ----------
    Edit TCAT to regroup templates. A template that is not listed here appears automatically under "More templates". */
 const TCAT=[
- {id:'insp',n:'Inspection & procedures',d:'NDT examination reports and technical procedures',p:'<path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 14l2 2 4-4"/>',t:['mpi','ut','vpr','trq']},
- {id:'job',n:'Job & site forms',d:'Client sign-off, document transmittals and timesheets',p:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M3 13h18"/>',t:['jcf','trn','tsh']},
- {id:'biz',n:'Business & admin',d:'Invoices and letters',p:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',t:['inv','ltr']}];
+ {id:'insp',n:'Inspection & procedures',d:'NDT examination reports and technical procedures',p:'<path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 14l2 2 4-4"/>',t:['mpi','ut','plt','pt','cal','ncr','ipr','vpr','trq']},
+ {id:'hse',n:'HSE',d:'Toolbox talks, JSAs, permits, incident reports and safety checklists',p:'<path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>',t:['tbt','jsa','ptw','inc','pjs']},
+ {id:'tank',n:'Tank calibration',d:'Tank calibration certificates, strapping sheets and tape / DET verification',p:'<ellipse cx="12" cy="6" rx="7" ry="2.5"/><path d="M5 6v12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/>',t:['tcc','tsf','ctv']},
+ {id:'job',n:'Job & site forms',d:'Client sign-off, transmittals, timesheets, site reports and minutes',p:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2M3 13h18"/>',t:['jcf','trn','tsh','dsr','edn','mob','mtg']},
+ {id:'biz',n:'Business & admin',d:'Invoices, quotations, expense claims and letters',p:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',t:['inv','ltr','quo','exp']}];
 var tcat=null;
 const tcList=()=>{const used=new Set(TCAT.flatMap(c=>c.t)),rest=Object.keys(TPL).filter(k=>!used.has(k)),L=TCAT.map(c=>Object.assign({},c,{t:c.t.filter(k=>TPL[k])})).filter(c=>c.t.length);
  if(rest.length)L.push({id:'more',n:'More templates',d:'Other Danholsen templates',p:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',t:rest});return L};
@@ -557,7 +797,7 @@ function applyF(){const q=(($('#q')||{}).value||'').toLowerCase().trim(),f=FL[hf
  const fe=$('#fe');if(fe)fe.style.display=n||!docs.length?'none':''}
 let SC0=null;
 function render(){if(view!=='pdfed'&&window.PE)PE.leave();{const m=document.querySelector('main.wrap');SC0=m?m.scrollTop:null}if(view!=='cfg'){meEdit=null;meD=null}document.documentElement.dataset.t=eff();document.querySelectorAll('#lgp,#sgp').forEach(q=>q.remove());{const mt=document.querySelector('meta[name=theme-color]');if(mt)mt.content=TC()}const A=$('#app'),L=[...docs].sort((a,b)=>b.u-a.u),last=L[0];
- if(view==='home'){const NU=docs.filter(unsig).length,NT=docs.filter(isTd).length,PN=L.filter(d=>d.pin);if((hf==='us'&&!NU)||(hf==='td'&&!NT))hf='all';A.innerHTML=bar(brand)+`<main class="wrap">${hero(NU,NT,L.length,PN.length)}${bnr()}${qa()}<input id="q" class="search" type="search" placeholder="Search reports and forms" aria-label="Search documents">${last?`<section class="cont" role="button" tabindex="0" data-o="${last.id}" aria-label="Open ${e(last.title)}"><div class="mini cpg">${sheet(last)}</div><div class="ci"><small>Continue editing</small><h2>${e(last.title)}</h2><p>${last.title===TPL[last.t].n?'':TPL[last.t].n+' \u00b7 '}Edited ${ago(last.u)}</p></div><button class="btn p cop" type="button" tabindex="-1" data-o="${last.id}"><span>Open</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></section>`:''}${shd('newdoc','New document','Start from a Danholsen template',Object.keys(TPL).length+' templates')}<button class="ntb" id="ntpl" type="button" aria-label="Browse templates by category"><span class="nti">${PLUS}</span><span class="ntt"><b>Choose a template</b><small>${tcList().length} categories \u00b7 ${Object.keys(TPL).length} templates</small></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>${PN.length?`${shd('','Pinned','Kept at the top for quick access',PN.length+' pinned')}<div class="dlist" id="prail">${PN.map((d,i)=>card(d,i)).join('')}</div>`:''}${shd('recent','Recent','Your latest reports and forms',L.length?L.length+(L.length==1?' document':' documents'):'')}${L.length?chips(NT,NU):''}<div class="dlist" id="rail">${L.length?L.map((d,i)=>card(d,i)).join(''):'<p class="empty">Nothing yet. Choose a template above to start.</p>'}</div>${L.length>6?`<button class="dmore" id="dmore" type="button">Show all ${L.length} documents</button>`:''}<p class="empty" id="fe" style="display:none">No documents match this filter.</p></main>`+nav('home');applyF()}
+ if(view==='home'){const NU=docs.filter(unsig).length,NT=docs.filter(isTd).length,PN=L.filter(d=>d.pin);if((hf==='us'&&!NU)||(hf==='td'&&!NT))hf='all';A.innerHTML=bar(brand)+`<main class="wrap">${hero(NU,NT,L.length,PN.length)}${last?`<section class="cont" role="button" tabindex="0" data-o="${last.id}" aria-label="Open ${e(last.title)}"><div class="mini cpg">${sheet(last)}</div><div class="ci"><small>Continue editing</small><h2>${e(last.title)}</h2><p>${last.title===TPL[last.t].n?'':TPL[last.t].n+' \u00b7 '}Edited ${ago(last.u)}</p></div><button class="btn p cop" type="button" tabindex="-1" data-o="${last.id}"><span>Open</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></section>`:''}${qa()}<input id="q" class="search" type="search" placeholder="Search reports and forms" aria-label="Search documents">${bnr()}${shd('newdoc','New document','Start from a Danholsen template',Object.keys(TPL).length+' templates')}<button class="ntb" id="ntpl" type="button" aria-label="Browse templates by category"><span class="nti">${PLUS}</span><span class="ntt"><b>Choose a template</b><small>${tcList().length} categories \u00b7 ${Object.keys(TPL).length} templates</small></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>${PN.length?`${shd('','Pinned','Kept at the top for quick access',PN.length+' pinned')}<div class="dlist" id="prail">${PN.map((d,i)=>card(d,i)).join('')}</div>`:''}${shd('recent','Recent','Your latest reports and forms',L.length?L.length+(L.length==1?' document':' documents'):'')}${L.length?chips(NT,NU):''}<div class="dlist" id="rail">${L.length?L.map((d,i)=>card(d,i)).join(''):'<p class="empty">Nothing yet. Choose a template above to start.</p>'}</div>${L.length>6?`<button class="dmore" id="dmore" type="button">Show all ${L.length} documents</button>`:''}<p class="empty" id="fe" style="display:none">No documents match this filter.</p></main>`+nav('home');applyF()}
  if(view==='tcat'&&!tcList().some(x=>x.id===tcat))view='newdoc';
  if(view==='newdoc'){const C=tcList(),n=Object.keys(TPL).length;A.innerHTML=bar(`<button class="ib" id="home" aria-label="Back">${IC.back}</button><h1 class="h1 s">New document</h1>`)+`<main class="wrap"><p class="sub">Choose a category \u00b7 ${n} templates</p><div class="cats">${C.map(c=>`<button class="cat" type="button" data-tc="${c.id}" aria-label="${e(c.n)}, ${c.t.length} ${c.t.length==1?'template':'templates'}"><span class="ch"><span class="cic">${qi(c.p)}</span><span class="cn">${c.t.length} ${c.t.length==1?'template':'templates'}</span></span><b>${e(c.n)}</b><p>${e(c.d)}</p><span class="cl">${c.t.map(k=>`<i>${e(TPL[k].n)}</i>`).join('')}</span></button>`).join('')}</div></main>`+nav('home')}
  if(view==='tcat'){const c=tcList().find(x=>x.id===tcat);A.innerHTML=bar(`<button class="ib" id="tcb" aria-label="Back to categories">${IC.back}</button><h1 class="h1 s">${e(c.n)}</h1>`)+`<main class="wrap"><p class="sub">${e(c.d)} \u00b7 ${c.t.length} ${c.t.length==1?'template':'templates'}</p><div id="ngrid" class="flat"><div class="dlist">${c.t.map(tcard).join('')}</div></div></main>`+nav('home')}

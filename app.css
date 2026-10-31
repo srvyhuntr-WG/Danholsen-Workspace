@@ -1385,3 +1385,43 @@ body:has(.etb.show) .wrap.ew{padding-bottom:55vh}
 /* v74: Edit PDF - the Highlight button label was amber on amber (invisible); page pictures show at once with no fade */
 html[data-t] .pe-name .lgbtn.on{background:var(--ac)!important;color:#1B1B1B!important;border-color:var(--ac)!important}
 .pe-cv,.pe-cv.rd{opacity:1!important;transition:none!important}
+
+/* v75: Files - "New project / Create a folder" card readable in light AND dark (was a near-invisible dashed outline on transparent) */
+html[data-t] .ftile.fnew{
+  background:color-mix(in srgb,var(--ac) 9%,var(--sf));
+  border:2px dashed color-mix(in srgb,var(--ac) 55%,var(--tx) 45%);
+  box-shadow:none;
+  color:var(--tx);
+}
+html[data-t] .ftile.fnew:hover{background:color-mix(in srgb,var(--ac) 16%,var(--sf));border-color:var(--ac)}
+html[data-t] .ftile.fnew .fi.plus{
+  width:36px;height:36px;margin:0 0 6px;border-radius:50%;
+  background:var(--ac);color:#1B1B1B;
+  font:600 26px/34px var(--font);text-align:center;
+}
+html[data-t] .ftile.fnew b{color:var(--tx);margin-top:0}
+html[data-t] .ftile.fnew span:last-child{color:var(--mu);font-weight:500}
+html[data-t=dark] .ftile.fnew span:last-child{color:#C9C6BC}
+
+/* v76: New project card - stronger dashed outline in light mode (3:1 against the page), amber in dark, clear focus ring in both */
+html[data-t=dark] .ftile.fnew{border-color:var(--ac)}
+html[data-t] .ftile.fnew:hover{border-color:var(--ac)}
+html[data-t] .ftile.fnew:active{background:color-mix(in srgb,var(--ac) 24%,var(--sf))}
+html[data-t] .ftile.fnew:focus-visible{outline:3px solid var(--ac);outline-offset:3px}
+
+
+/* v78: phones - edit bar never slides or lags (position is set instantly, no transition on the move); category tiles sit side by side */
+.etb,.etb.show,.etb.vz{transition:none!important}
+.etb.show{animation:etbin .14s ease-out}
+@keyframes etbin{from{opacity:0}to{opacity:1}}
+@media(max-width:619px){
+ .cats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .cat{min-height:0;padding:14px;gap:8px;border-radius:20px}
+ .cat .ch{flex-direction:column;align-items:flex-start;gap:10px}
+ .cat .cic{width:40px;height:40px;border-radius:12px}
+ .cat .cic svg{width:21px;height:21px}
+ .cat .cn{padding:4px 9px;font-size:11px}
+ .cat b{margin-top:0;font-size:15.5px;line-height:1.2}
+ .cat p{font-size:12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+ .cat .cl{display:none}
+}
