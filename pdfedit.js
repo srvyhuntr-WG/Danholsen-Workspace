@@ -52,7 +52,7 @@ PE.discard=async()=>{try{await idbSet(KEY,null);await idbSet('pdfedits',null)}ca
 /* ---- load ---- */
 async function open(bytes,name,edits,added){
  const lib=await LIB();await metrics();
- const pdf=await lib.getDocument({data:bytes.slice(0)}).promise;
+ const pdf=await lib.getDocument({data:bytes.slice(0),isOffscreenCanvasSupported:false,isImageDecoderSupported:false}).promise;
  const pages=[];for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i),v=pg.getViewport({scale:1});pages.push({n:i,pg,w:v.width,h:v.height,blocks:null,el:null,done:false})}
  st={name,bytes,pdf,pages,edits:edits||{},added:added||[],hl:true,flat:false,seq:(added||[]).length+1};histReset();
  if(!edits&&!added){try{await idbSet(KEY,{name,bytes:bytes.buffer.slice(0),at:Date.now()});await idbSet('pdfedits',null)}catch{}}}
@@ -60,7 +60,7 @@ PE.load=async file=>{
  if(!file)return;if(!/pdf$/i.test(file.type)&&!/\.pdf$/i.test(file.name)){toast('Please choose a PDF file');return}
  toast('Opening PDF\u2026');
  try{await open(new Uint8Array(await file.arrayBuffer()),file.name);view='pdfed';render()}
- catch(err){console.error(err);toast(String(err&&err.name)==='PasswordException'?'This PDF is password protected':'That PDF could not be opened')}};
+ catch(err){console.error(err);toast(String(err&&err.name)==='PasswordException'?'This PDF is password protected':'That PDF could not be opened ('+emsg(err)+')')}};
 PE.resume=async()=>{const d=await PE.draft();if(!d)return;
  try{await open(new Uint8Array(d.bytes),d.name,d.edits||{},d.added||[]);render()}catch{toast('The saved PDF could not be opened');}};
 
@@ -120,24 +120,35 @@ function pump(){if(dbusy)return;dq=dq.filter(P=>{const ok=P.vis&&P.el&&P.el.isCo
  dq.forEach((P,i)=>{const r=P.el.getBoundingClientRect(),d=Math.abs((r.top+r.bottom)/2-c);if(d<bd){bd=d;bi=i}});
  const P=dq.splice(bi,1)[0];P.q=0;dbusy=true;
  drawPage(P).catch(()=>{}).finally(()=>{dbusy=false;pump()})}
+const emsg=e=>String((e&&(e.name&&e.name!=='Error'?e.name+': ':'')+(e.message||e))||e||'unknown').slice(0,160);
+function peNote(wrap,txt,err){let n=wrap.querySelector('.pe-note[data-k="'+(err?'e':'n')+'"]');if(!n){n=document.createElement('div');n.className='pe-note';n.dataset.k=err?'e':'n';wrap.appendChild(n)}n.textContent=txt;return n}
 async function drawPage(P){
- const wrap=P.el,k=wrap.clientWidth/P.w,dpr=Math.min(2,window.devicePixelRatio||1),vs=Math.min(k*dpr,3600/Math.max(P.w,P.h));
- const vp=P.pg.getViewport({scale:vs}),off=document.createElement('canvas');off.className='pe-cv';
- off.width=Math.round(vp.width);off.height=Math.round(vp.height);
- const ctx=off.getContext('2d');
- try{P.task=P.pg.render({canvasContext:ctx,viewport:vp});await P.task.promise}catch{P.task=null;off.width=off.height=0;return}
+ const wrap=P.el,k=wrap.clientWidth/P.w,dpr=Math.min(2,window.devicePixelRatio||1);
+ let vs=Math.min(k*dpr,3600/Math.max(P.w,P.h)),off=null,ctx=null,err=null,vp=null;
+ /* draw the page picture; if the browser refuses (memory limit, unsupported feature) try again smaller before giving up */
+ for(let a=0;a<3;a++){
+  vp=P.pg.getViewport({scale:vs});off=document.createElement('canvas');off.className='pe-cv';off.width=Math.round(vp.width);off.height=Math.round(vp.height);
+  ctx=off.getContext('2d');
+  if(!ctx){err=new Error('canvas not available');off.width=off.height=0;vs=Math.max(.5,vs*.6);continue}
+  try{P.task=P.pg.render({canvasContext:ctx,viewport:vp});await P.task.promise;err=null;break}
+  catch(e){P.task=null;off.width=off.height=0;if(e&&e.name==='RenderingCancelledException')return;err=e;vs=Math.max(.5,vs*.6)}}
  P.task=null;
+ if(err){console.error('PDF page '+P.n,err);if(P.el&&P.el.isConnected&&wrap===P.el)peNote(wrap,'Page '+P.n+' could not be drawn ('+emsg(err)+'). Scroll away and back to try again.',true);return}
  if(!P.el||!P.el.isConnected||wrap!==P.el){off.width=off.height=0;return}
  if(!P.vis){off.width=off.height=0;return}
- let bl=null,box=null;
- if(!P.done){bl=await extract(P);box=wrap.querySelector('.pe-ov');
-  if(!bl.length&&!wrap.querySelector('.pe-note')){const n=document.createElement('div');n.className='pe-note';n.textContent='No editable text found on this page (a scan, a picture or sideways text). Use Add text to write on it.';wrap.appendChild(n)}
-  fontBold(P,bl);
-  if(bl.length){let img=null;try{img=ctx.getImageData(0,0,off.width,off.height)}catch{}if(img)bl.forEach(B=>sample(img,vp.scale,B))}
-  const kk=wrap.clientWidth/P.w;bl.forEach(B=>mkBlock(P,B,box,kk));
-  st.added.filter(a=>a.p===P.n).forEach(a=>mkAdded(P,a,box,kk));P.done=true}
+ const er=wrap.querySelector('.pe-note[data-k="e"]');if(er)er.remove();
+ /* show the picture straight away, so a page is never blank even if reading its text fails */
  const old=wrap.querySelector('canvas');if(old){old.width=old.height=0;old.replaceWith(off)}else wrap.insertBefore(off,wrap.firstChild);
- P.rd=true;requestAnimationFrame(()=>off.classList.add('rd'))}
+ off.classList.add('rd');P.rd=true;
+ if(!P.done){
+  try{
+   const bl=await extract(P),box=wrap.querySelector('.pe-ov');
+   if(!bl.length&&!wrap.querySelector('.pe-note[data-k="n"]'))peNote(wrap,'No editable text found on this page (a scan, a picture or sideways text). Use Add text to write on it.',false);
+   fontBold(P,bl);
+   if(bl.length){let img=null;try{img=ctx.getImageData(0,0,off.width,off.height)}catch{}if(img)bl.forEach(B=>sample(img,vp.scale,B))}
+   const kk=wrap.clientWidth/P.w;bl.forEach(B=>mkBlock(P,B,box,kk));
+   st.added.filter(a=>a.p===P.n).forEach(a=>mkAdded(P,a,box,kk));P.done=true}
+  catch(e){console.error('PDF text '+P.n,e);P.blocks=P.blocks||[];P.done=true;peNote(wrap,'The text on page '+P.n+' could not be read ('+emsg(e)+'). You can still use Add text.',true)}}}
 function freePage(P){if(P.task){try{P.task.cancel()}catch{}P.task=null}const cv=P.el&&P.el.querySelector('canvas');if(cv){cv.width=0;cv.height=0;cv.classList.remove('rd')}P.rd=false}
 function layout(){
  const box=$q('#pepages');if(!box)return;box.innerHTML='';

@@ -23,6 +23,12 @@ self.addEventListener('fetch',e=>{
   const r=e.request;
   if(r.method!=='GET'||!r.url.startsWith('http'))return;
   if(new URL(r.url).pathname.endsWith('/version.json'))return;
+  /* Fonts never change under the same name: serve them straight from the cache (instant, no network wait at launch) and refresh in the background. */
+  if(/\.woff2?$/.test(new URL(r.url).pathname)){
+    e.respondWith(caches.match(r).then(m=>{
+      const net=fetch(r).then(res=>{if(res.ok&&new URL(r.url).origin===location.origin){const cp=res.clone();caches.open(C).then(c=>c.put(r,cp))}return res}).catch(()=>m);
+      return m||net}));
+    return}
   e.respondWith(fetch(r,{cache:'no-cache'}).then(res=>{
     if(res.ok&&new URL(r.url).origin===location.origin){const copy=res.clone();caches.open(C).then(c=>c.put(r,copy))}
     return res;

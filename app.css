@@ -1381,3 +1381,7 @@ body:has(.etb.show) .wrap.ew{padding-bottom:55vh}
  html[data-t] #ngrid.flat .dlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:0;padding:4px 0 24px;overflow:visible;scroll-snap-type:none}
  html[data-t] #ngrid.flat .drow.tpc{flex:initial;min-width:0}
 }
+
+/* v74: Edit PDF - the Highlight button label was amber on amber (invisible); page pictures show at once with no fade */
+html[data-t] .pe-name .lgbtn.on{background:var(--ac)!important;color:#1B1B1B!important;border-color:var(--ac)!important}
+.pe-cv,.pe-cv.rd{opacity:1!important;transition:none!important}

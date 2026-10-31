@@ -26,6 +26,10 @@
 <link rel="preload" href="public-sans-latin-500-normal.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="public-sans-latin-600-normal.woff" as="font" type="font/woff" crossorigin>
 <link rel="preload" href="public-sans-latin-700-normal.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="barlow-condensed-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="inter-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="inter-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="app.css">
 </head>
@@ -39,11 +43,11 @@
 <script src="pdf.js"></script>
 <script src="pdfinc.js"></script>
 <script>
-/* Start the app only once storage AND the UI fonts are ready, so text is drawn once in its final font (no fallback-to-Public-Sans swap).
-   The font wait is capped at 2.5 s so a slow or failed font load can never block the app. */
+/* Start the app only once storage AND every font declared in fonts.css are ready, so all text (body, headings, tiles) is drawn once
+   in its final font and never swaps after the first paint. The font wait is capped at 3 s so a slow or failed load can never block the app. */
 (function(){
-var F=["400","500","600","700"].map(function(w){return document.fonts?document.fonts.load(w+" 16px 'Public Sans'"):Promise.resolve()});
-var fonts=Promise.race([Promise.all(F).catch(function(){}),new Promise(function(r){setTimeout(r,2500)})]);
+var F=document.fonts?Array.from(document.fonts).map(function(f){return f.load().catch(function(){})}):[];
+var fonts=Promise.race([Promise.all(F),new Promise(function(r){setTimeout(r,3000)})]);
 Promise.all([DWSTORE.ready,fonts]).then(function(){["app.js","pdfedit.js"].forEach(function(s){var e=document.createElement("script");e.src=s;e.async=false;document.body.appendChild(e)})})})();
 </script>
 </body>
